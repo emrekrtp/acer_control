@@ -6,14 +6,15 @@ public sealed record GuardResult(GuardOutcome Outcome, ChargeLimitState? Actual,
 
 /// <summary>
 /// İstenen sınır durumunu cihazda zorlar. Her denemede okur, farklıysa yazar ve doğrular;
-/// başarısız seri başına yalnızca bir kez bildirim ister.
+/// başarısız seri başına yalnızca bir kez bildirim ister. <c>quiet</c> denemeleri (ör. uykudan uyanış,
+/// arayüz henüz hazır değilken) hiç bildirim istemez ve seriyi başlatmaz.
 /// </summary>
 public sealed class ChargeLimitGuard(IChargeLimitDevice device, Action<TimeSpan> sleep, int attempts = 3, TimeSpan? delay = null)
 {
     private readonly TimeSpan delay = delay ?? TimeSpan.FromSeconds(2);
     private bool inFailureStreak;
 
-    public GuardResult Enforce(bool desired)
+    public GuardResult Enforce(bool desired, bool quiet = false)
     {
         var want = desired ? ChargeLimitState.On : ChargeLimitState.Off;
         ChargeLimitState? actual = null;
@@ -39,6 +40,8 @@ public sealed class ChargeLimitGuard(IChargeLimitDevice device, Action<TimeSpan>
                 error = e.Message;
             }
         }
+
+        if (quiet) return new GuardResult(GuardOutcome.Failed, actual, ShouldNotify: false, error);
 
         var notify = !inFailureStreak;
         inFailureStreak = true;

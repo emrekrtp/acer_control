@@ -47,5 +47,5 @@ Acer Nitro 5 AN515-58 (Windows 11, BIOS V2.21) için Acer Care Center'ın yerine
 ## Uygulayıcıya kalanlar (benim kararlarım)
 - Ayarlar `%APPDATA%\AcerKontrol\settings.json`; bozuksa varsayılan.
 - Tekrar: döngü başına 3 deneme, aralarında 2 sn. Başarısız seri başına tek bildirim.
-- Kurulum yeri `%LOCALAPPDATA%\Programs\AcerKontrol`, zamanlanmış görev adı `AcerKontrol`.
+- Kurulum yeri `%ProgramFiles%\AcerKontrol` (son incelemede `%LOCALAPPDATA%`'dan taşındı: yükseltilmiş çalışan exe kullanıcının yazabildiği bir klasörde olmamalı), zamanlanmış görev adı `AcerKontrol`.
 - Tek örnek (mutex).

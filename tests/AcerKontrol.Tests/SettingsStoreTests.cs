@@ -35,3 +35,21 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.False(s.Load().ChargeLimitEnabled);
     }
 }
+
+public sealed class SettingsStoreTrySaveTests : IDisposable
+{
+    private readonly string tmp = Directory.CreateTempSubdirectory("acerkontrol-").FullName;
+    public void Dispose() => Directory.Delete(tmp, recursive: true);
+
+    [Fact]
+    public void TrySave_Unwritable_ReturnsFalse()
+    {
+        var path = Path.Combine(tmp, "settings.json");
+        Directory.CreateDirectory(path); // aynı adda bir klasör yazmayı engeller
+        Assert.False(new SettingsStore(path).TrySave(new AppSettings(false)));
+    }
+
+    [Fact]
+    public void TrySave_Writable_ReturnsTrue()
+        => Assert.True(new SettingsStore(Path.Combine(tmp, "settings.json")).TrySave(new AppSettings(false)));
+}

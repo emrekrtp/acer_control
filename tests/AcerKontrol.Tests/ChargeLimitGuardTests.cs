@@ -121,3 +121,24 @@ public class ChargeLimitGuardTests
         Assert.Equal([true, true, true], d.Writes);
     }
 }
+
+public class ChargeLimitGuardQuietTests
+{
+    private sealed class AlwaysThrows : IChargeLimitDevice
+    {
+        public ChargeLimitState Read() => throw new InvalidOperationException("uyanıyor");
+        public void Write(bool enabled) { }
+    }
+
+    [Fact]
+    public void Enforce_QuietFailure_DoesNotNotify()
+        => Assert.False(new ChargeLimitGuard(new AlwaysThrows(), _ => { }).Enforce(true, quiet: true).ShouldNotify);
+
+    [Fact]
+    public void Enforce_QuietFailureThenRealFailure_NotifiesOnRealOne()
+    {
+        var g = new ChargeLimitGuard(new AlwaysThrows(), _ => { });
+        g.Enforce(true, quiet: true);
+        Assert.True(g.Enforce(true).ShouldNotify);
+    }
+}

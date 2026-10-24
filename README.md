@@ -17,4 +17,4 @@ pwsh scripts\install.ps1     # derler, kurar, oturum açılışında otomatik ba
 pwsh scripts\uninstall.ps1   # durdurur ve kaldırır
 ```
 
-Kurulum yeri `%LOCALAPPDATA%\Programs\AcerKontrol`, ayarlar `%APPDATA%\AcerKontrol\settings.json`. Acer Care Center ve NitroSense kurulu kalabilir. Gerekirse .NET 9 SDK ile `dotnet test` testleri çalıştırır.
+Kurulum yeri `%ProgramFiles%\AcerKontrol` (yalnızca yöneticiler yazabilir; uygulama yönetici yetkisiyle çalıştığı için), ayarlar `%APPDATA%\AcerKontrol\settings.json`. Acer Care Center ve NitroSense kurulu kalabilir. Gerekirse .NET 9 SDK ile `dotnet test` testleri çalıştırır.

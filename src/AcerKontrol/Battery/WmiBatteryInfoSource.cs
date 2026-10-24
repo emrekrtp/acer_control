@@ -5,8 +5,9 @@ namespace AcerKontrol.Battery;
 /// <summary>Pil bilgisini WMI'dan okur; hiçbir zaman istisna atmaz, okunamayan alanlar null kalır.</summary>
 public sealed class WmiBatteryInfoSource : IBatteryInfoSource
 {
-    // Tasarım kapasitesi değişmez; yedek kaynak (powercfg) yavaş olduğundan bir kez okunur.
-    private readonly Lazy<uint?> designCapacityFallback = new(PowercfgReport.ReadDesignCapacity);
+    // Tasarım kapasitesi değişmez; yedek kaynak (powercfg) yavaş olduğundan başarılı okumadan sonra
+    // tekrar sorulmaz. İstisna atarsa sonraki Read'de yeniden denenir.
+    private readonly OnceOnSuccess<uint?> designCapacityFallback = new(PowercfgReport.ReadDesignCapacity);
 
     public BatterySnapshot Read()
     {
@@ -19,7 +20,7 @@ public sealed class WmiBatteryInfoSource : IBatteryInfoSource
             OnAcPower: status?["PowerOnline"] as bool?,
             FullChargedCapacity: ToUInt(First(@"root\wmi", "BatteryFullChargedCapacity")?["FullChargedCapacity"]),
             DesignedCapacity: ZeroAsUnknown(ToUInt(First(@"root\wmi", "BatteryStaticData")?["DesignedCapacity"]))
-                ?? designCapacityFallback.Value,
+                ?? designCapacityFallback.Get(),
             CycleCount: ZeroAsUnknown(ToUInt(First(@"root\wmi", "BatteryCycleCount")?["CycleCount"])),
             TemperatureC: tempTenthsKelvin is uint t and > 0 ? Math.Round(t / 10.0 - 273.15, 1) : null);
     }

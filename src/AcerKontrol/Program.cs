@@ -14,6 +14,9 @@ internal static class Program
         if (!createdNew) return;
 
         ApplicationConfiguration.Initialize();
+        // Son çare: beklenmeyen bir UI istisnası WinForms hata penceresi açmasın, tepsi çalışmaya devam etsin.
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        Application.ThreadException += (_, _) => { };
         Application.Run(new TrayAppContext(
             new SettingsStore(SettingsStore.DefaultPath),
             new WmiBatteryInfoSource(),

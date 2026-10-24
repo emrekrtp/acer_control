@@ -1,4 +1,4 @@
-# AcerKontrol'ü derler, %LOCALAPPDATA%\Programs\AcerKontrol altına kurar ve
+# AcerKontrol'ü derler, %ProgramFiles%\AcerKontrol altına kurar ve
 # oturum açılışında yönetici yetkisiyle (UAC sormadan) başlatan zamanlanmış görevi kaydeder.
 $ErrorActionPreference = 'Stop'
 
@@ -10,13 +10,16 @@ if (-not $isAdmin) {
 }
 
 $TaskName = 'AcerKontrol'
-$InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\AcerKontrol'
+# Program Files: yönetici olmayan süreçler yükseltilmiş çalışan exe'yi değiştiremesin.
+$InstallDir = Join-Path $env:ProgramFiles 'AcerKontrol'
+$LegacyDir = Join-Path $env:LOCALAPPDATA 'Programs\AcerKontrol'
 $Project = Join-Path $PSScriptRoot '..\src\AcerKontrol\AcerKontrol.csproj'
 $Exe = Join-Path $InstallDir 'AcerKontrol.exe'
 
 Write-Host 'Çalışan AcerKontrol durduruluyor...'
 Get-Process AcerKontrol -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
+if (Test-Path $LegacyDir) { Remove-Item $LegacyDir -Recurse -Force }   # eski kullanıcı klasörü kurulumu
 
 Write-Host "Derleniyor ve $InstallDir altına kuruluyor..."
 dotnet publish $Project -c Release -r win-x64 --self-contained false -o $InstallDir --nologo --disable-build-servers

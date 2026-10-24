@@ -40,7 +40,7 @@ public static class PowercfgReport
         }
         finally
         {
-            try { File.Delete(file); } catch (IOException) { }
+            try { File.Delete(file); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
     }
 }

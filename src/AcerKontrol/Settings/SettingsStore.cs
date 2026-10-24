@@ -19,6 +19,20 @@ public sealed class SettingsStore(string filePath)
         }
     }
 
+    /// <summary>Kaydeder; disk dolu, dosya kilitli gibi durumlarda istisna yerine false döner.</summary>
+    public bool TrySave(AppSettings settings)
+    {
+        try
+        {
+            Save(settings);
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     public void Save(AppSettings settings)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);

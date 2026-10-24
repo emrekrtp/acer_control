@@ -10,7 +10,9 @@ if (-not $isAdmin) {
 }
 
 $TaskName = 'AcerKontrol'
-$InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\AcerKontrol'
+# Program Files: yönetici olmayan süreçler yükseltilmiş çalışan exe'yi değiştiremesin.
+$InstallDir = Join-Path $env:ProgramFiles 'AcerKontrol'
+$LegacyDir = Join-Path $env:LOCALAPPDATA 'Programs\AcerKontrol'
 
 Get-Process AcerKontrol -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
@@ -18,8 +20,8 @@ Start-Sleep -Milliseconds 500
 if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 }
-if (Test-Path $InstallDir) {
-    Remove-Item $InstallDir -Recurse -Force
+foreach ($dir in $InstallDir, $LegacyDir) {
+    if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
 }
 
 Write-Host 'Acer Kontrol kaldırıldı. Pil sınırı son bırakıldığı durumda kalır.'

@@ -21,7 +21,7 @@ public sealed class TrayAppContext : ApplicationContext
     private AppSettings settings;
     private BatterySnapshot? lastSnapshot;
     private ChargeLimitState? lastState;
-    private bool ticking, tickPending;
+    private bool ticking, tickPending, tickPendingQuiet = true;
 
     public TrayAppContext(SettingsStore store, IBatteryInfoSource battery, IChargeLimitDevice device)
     {
@@ -59,37 +59,53 @@ public sealed class TrayAppContext : ApplicationContext
 
     private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
     {
-        if (e.Mode is PowerModes.Resume or PowerModes.StatusChange)
-            ui.Post(_ => Tick(), null);
+        // Uyanışta Acer arayüzü birkaç saniye hazır olmayabilir; o döngü bildirim göstermez.
+        if (e.Mode == PowerModes.Resume) ui.Post(_ => Tick(quiet: true), null);
+        else if (e.Mode == PowerModes.StatusChange) ui.Post(_ => Tick(), null);
     }
 
     private void ToggleLimit()
     {
         settings = settings with { ChargeLimitEnabled = !settings.ChargeLimitEnabled };
-        store.Save(settings);
+        store.TrySave(settings);
         limitItem.Checked = settings.ChargeLimitEnabled;
         Tick();
     }
 
-    private async void Tick()
+    private async void Tick(bool quiet = false)
     {
-        if (ticking) { tickPending = true; return; }
+        if (ticking)
+        {
+            tickPending = true;
+            tickPendingQuiet &= quiet;
+            return;
+        }
         ticking = true;
         try
         {
             var desired = settings.ChargeLimitEnabled;
-            var (result, snapshot) = await Task.Run(() => (guard.Enforce(desired), battery.Read()));
+            var (result, snapshot) = await Task.Run(() => TrayCycle.Run(guard, battery, desired, quiet));
             lastState = result.Actual;
             lastSnapshot = snapshot;
             Render();
             if (result.ShouldNotify)
                 notifyIcon.ShowBalloonTip(10_000, Strings.NotifyFailTitle, Strings.NotifyFailBody, ToolTipIcon.Warning);
         }
+        catch (Exception)
+        {
+            // async void'den kaçan istisna uygulamayı düşürür; bir sonraki döngü yeniden dener.
+        }
         finally
         {
             ticking = false;
         }
-        if (tickPending) { tickPending = false; Tick(); }
+        if (tickPending)
+        {
+            var pendingQuiet = tickPendingQuiet;
+            tickPending = false;
+            tickPendingQuiet = true;
+            Tick(pendingQuiet);
+        }
     }
 
     private void Render()
