@@ -1,6 +1,32 @@
+# .NET build outputs
 bin/
 obj/
 publish/
-.superpowers/
-*.user
+out/
+TestResults/
+*.nupkg
+*.snupkg
+
+# Visual Studio / Rider / VS Code
 .vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# Logs & temporary files
+*.log
+*.tmp
+*.bak
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local AI / agent tooling
+.claude/
+.superpowers/
