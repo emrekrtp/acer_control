@@ -1,82 +1,88 @@
 # Acer Kontrol
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/emrekrtp/acer_booster/actions/workflows/ci.yml/badge.svg)](https://github.com/emrekrtp/acer_booster/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/emrekrtp/acer_booster?color=ef233c)](https://github.com/emrekrtp/acer_booster/releases)
 [![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6.svg)](https://www.microsoft.com/windows)
 
-Acer Nitro 5 (AN515-58) için **NitroSense** ve **Acer Care Center**'ın temel özelliklerini hafif, koyu temalı ve kullanıcı dostu tek bir sistem tepsisi + kontrol paneli uygulamasında birleştiren açık kaynaklı Windows aracı.
+A lightweight, modern dark-themed Windows control center and system tray utility for **Acer Nitro 5 (AN515-58)** that brings the core features of **NitroSense** and **Acer Care Center** into a single fast, open-source application.
 
-## Özellikler
+## Features
 
-- **Genel Bakış Paneli:** Canlı CPU/GPU sıcaklığı, CPU/RAM kullanımı, CPU/GPU fan hızı (RPM), pil durumu ve tek tıkla hızlı kontroller.
-- **Fan ve Performans Kontrolü:**
-  - Performans profilleri: **Sessiz**, **Dengeli**, **Performans**, **Turbo**.
-  - Fan modları: **Otomatik**, **Maksimum**, **Özel** (CPU ve GPU için %0–100 bağımsız veya eşitlenmiş hız kaydırıcıları).
-  - **CoolBoost** anahtarı ve **Windows Güç Planı** (Güç Tasarrufu / Dengeli / Yüksek Performans) hızlı seçici.
-- **4 Bölgeli RGB Klavye Işığı:**
-  - Efektler: **Sabit Renk**, **Nefes Alma**, **Neon**, **Dalga**, **Kaydırma**, **Yakınlaştırma**.
-  - Parlaklık (%0–100), animasyon hızı (1–9), yön (Soldan Sağa / Sağdan Sola) ve 4 bağımsız bölge için renk seçici.
-  - Tek tıkla hazır temalar (Nitro Kırmızı, Siber Mavi, Zümrüt, Mor Neon, Gökkuşağı, Buz Beyazı, Dalga, Kapalı).
-- **Pil Sınırı (%80) ve Sistem Araçları:**
-  - %80 pil şarj sınırını her dakika, uykudan uyanınca ve şarj kablosu takılıp çıkınca otomatik korur.
-  - Canlı **Ekran Parlaklığı** kaydırıcısı, **LCD Overdrive**, **USB Kapalıyken Şarj** ve uyanışta ayarları otomatik yeniden uygulama.
-- **Zengin Sistem Tepsisi:**
-  - Sol tıkla kontrol panelini açar/gizler (pencere kapalıyken arka planda neredeyse sıfır kaynak tüketir).
-  - Sağ tık menüsünden pil sınırı, fan modu, performans profili ve klavye temalarına anında erişim sağlar.
+- **Live Overview Dashboard:** Real-time CPU/GPU temperatures (with thermal color indicators), CPU/RAM usage, CPU/GPU fan RPM, battery health & status, and one-click quick controls.
+- **Fan & Performance Control:**
+  - Performance profiles: **Quiet**, **Balanced**, **Performance**, and **Turbo**.
+  - Fan modes: **Auto**, **Max**, and **Custom** (0–100% independent or synchronized CPU/GPU fan speed sliders).
+  - **CoolBoost** toggle and quick **Windows Power Plan** selector (Power Saver / Balanced / High Performance).
+- **4-Zone RGB Keyboard Lighting:**
+  - Interactive 4-zone live keyboard preview with per-zone or unified color picker.
+  - Lighting effects: **Static**, **Breathing**, **Neon**, **Wave**, **Shifting**, and **Zoom**.
+  - Brightness (0–100%), animation speed (1–9), direction (Left-to-Right / Right-to-Left), and one-click presets.
+- **Battery Charge Limit (80%) & System Tools:**
+  - Automatically enforces the 80% battery charge limit every minute, after wake from sleep, and on AC plug/unplug events.
+  - Live **Display Brightness** slider, **LCD Overdrive**, **Power-Off USB Charging**, 30-second keyboard backlight timeout, and automatic reapply on wake.
+- **Rich System Tray:**
+  - Left-click to show/hide the control panel (near-zero background resource usage while hidden).
+  - Right-click context menu for instant access to battery charge limit, fan modes, performance profiles, and RGB presets.
 
-## Gereksinimler
+## Download (Prebuilt EXE)
 
-- **İşletim Sistemi:** Windows 10 veya Windows 11 (64-bit)
-- **Çalışma Zamanı / SDK:** [.NET 9.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0) (kaynaktan derlemek için .NET 9.0 SDK)
-- **Yetki:** Acer WMI donanım arayüzüne erişim için **Yönetici (Administrator)** yetkisi
-- **Donanım:** Acer Nitro 5 (AN515-58) üzerinde geliştirilmiş ve test edilmiştir. Aynı Acer WMI arayüzünü kullanan diğer Nitro / Predator modellerinde de kısmen veya tamamen çalışabilir.
+Grab the latest release from the [Releases](https://github.com/emrekrtp/acer_booster/releases) page:
 
-## İndirme (Hazır EXE)
+- **`AcerKontrol-vX.Y.Z-win-x64.exe`** (or `...-standalone.zip`): Single-file standalone executable — **no .NET installation required**.
+- **`AcerKontrol-vX.Y.Z-win-x64-portable.zip`**: Compact single-file package (~785 KB) for systems that already have the .NET 9 Desktop Runtime installed.
 
-Derleme ile uğraşmadan doğrudan kullanmak için **Releases** sayfasından en son sürümü indirebilirsiniz:
+## Requirements
 
-- **`AcerKontrol-vX.Y.Z-win-x64.exe`** (veya `...-standalone.zip`): Tek dosya halinde çalışır, sistemde .NET kurulu olmasını gerektirmez.
-- **`AcerKontrol-vX.Y.Z-win-x64-portable.zip`**: Bilgisayarında .NET 9 Desktop Runtime zaten kurulu olanlar için çok daha küçük boyutlu paket.
+- **OS:** Windows 10 or Windows 11 (64-bit)
+- **Privileges:** **Administrator** privileges are required to communicate with the Acer WMI hardware interface.
+- **Hardware:** Developed and tested on **Acer Nitro 5 (AN515-58)**. Other Acer Nitro / Predator models sharing the same Acer WMI interface may also work partially or fully.
+- **Building from source:** [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 
-## Kaynaktan Kurulum / Kaldırma
+## Install / Uninstall from Source
 
-PowerShell üzerinden kurulum script'ini çalıştırabilirsiniz (gerekirse otomatik olarak yönetici yetkisi ister):
+Run the PowerShell scripts below (automatically prompts for Administrator elevation if needed):
 
 ```powershell
-pwsh scripts\install.ps1     # derler, kurar, oturum açılışında tepside otomatik başlatır
-pwsh scripts\uninstall.ps1   # durdurur ve kaldırır
+pwsh scripts\install.ps1     # builds, installs to Program Files, and registers logon autostart
+pwsh scripts\uninstall.ps1   # stops the app and removes installation & scheduled task
 ```
 
-- **Kurulum dizini:** `%ProgramFiles%\AcerKontrol`
-- **Ayar dosyası:** `%APPDATA%\AcerKontrol\settings.json`
+- **Install directory:** `%ProgramFiles%\AcerKontrol`
+- **Settings file:** `%APPDATA%\AcerKontrol\settings.json`
 
-## Geliştirme ve Testler
-
-Projeyi yerelde derlemek ve birim testlerini çalıştırmak için:
+## Development & Testing
 
 ```powershell
 dotnet build
 dotnet test
 ```
 
-### Proje Yapısı
+To build local single-file release artifacts into `publish\release\`:
 
-```text
-Acer/
-├── src/AcerKontrol/       # Ana Windows Forms uygulaması (WMI, fan, RGB, pil, tepsi, UI)
-├── tests/AcerKontrol.Tests/ # Birim testleri (codec, pil, ayarlar, durum metinleri)
-├── scripts/               # Kurulum ve kaldırma PowerShell betikleri
-└── docs/                  # Tasarım ve plan dokümanları
+```powershell
+pwsh scripts\build-release.ps1
 ```
 
-## Katkıda Bulunma
+### Project Structure
 
-Hata bildirimleri, yeni model uyumluluk raporları ve Pull Request'ler her zaman memnuniyetle karşılanır! Ayrıntılar için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına göz atabilirsiniz.
+```text
+acer_booster/
+├── src/AcerKontrol/         # Main Windows Forms app (WMI, fan, RGB, battery, tray, modern UI)
+├── tests/AcerKontrol.Tests/ # Unit tests (codecs, battery, settings, status formatting)
+├── scripts/                 # PowerShell install, uninstall, and local release scripts
+└── docs/                    # Architecture and design documents
+```
 
-## Sorumluluk Reddi
+## Contributing
 
-Bu proje **resmi bir Acer ürünü değildir** ve Acer Inc. ile herhangi bir bağlantısı yoktur. Uygulama donanım ayarlarını (fan hızı, güç profili, şarj sınırı vb.) doğrudan WMI üzerinden kontrol eder; kullanım sorumluluğu kullanıcıya aittir.
+Bug reports, model compatibility feedback, and Pull Requests are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-## Lisans
+## Disclaimer
 
-Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır.
+This project is **not an official Acer product** and is not affiliated with or endorsed by Acer Inc. It interacts directly with hardware settings (fan speeds, power profiles, battery charge limits, etc.) via WMI; use at your own risk.
+
+## License
+
+Licensed under the [MIT License](LICENSE).
