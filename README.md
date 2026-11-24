@@ -1,8 +1,8 @@
 # Acer Kontrol
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/emrekrtp/acer_booster/actions/workflows/ci.yml/badge.svg)](https://github.com/emrekrtp/acer_booster/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/emrekrtp/acer_booster?color=ef233c)](https://github.com/emrekrtp/acer_booster/releases)
+[![CI](https://github.com/emrekrtp/acer_control/actions/workflows/ci.yml/badge.svg)](https://github.com/emrekrtp/acer_control/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/emrekrtp/acer_control?color=ef233c)](https://github.com/emrekrtp/acer_control/releases)
 [![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6.svg)](https://www.microsoft.com/windows)
 
@@ -29,7 +29,7 @@ A lightweight, modern dark-themed Windows control center and system tray utility
 
 ## Download (Prebuilt EXE)
 
-Grab the latest release from the [Releases](https://github.com/emrekrtp/acer_booster/releases) page:
+Grab the latest release from the [Releases](https://github.com/emrekrtp/acer_control/releases) page:
 
 - **`AcerKontrol-vX.Y.Z-win-x64.exe`** (or `...-standalone.zip`): Single-file standalone executable — **no .NET installation required**.
 - **`AcerKontrol-vX.Y.Z-win-x64-portable.zip`**: Compact single-file package (~785 KB) for systems that already have the .NET 9 Desktop Runtime installed.
@@ -69,7 +69,7 @@ pwsh scripts\build-release.ps1
 ### Project Structure
 
 ```text
-acer_booster/
+acer_control/
 ├── src/AcerKontrol/         # Main Windows Forms app (WMI, fan, RGB, battery, tray, modern UI)
 ├── tests/AcerKontrol.Tests/ # Unit tests (codecs, battery, settings, status formatting)
 ├── scripts/                 # PowerShell install, uninstall, and local release scripts
