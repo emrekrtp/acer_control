@@ -48,19 +48,22 @@ public sealed record KeyboardLightingSettings(
     };
 }
 
-public sealed record KeyboardPreset(string Name, KeyboardLightingSettings Settings);
+public sealed record KeyboardPreset(string Name, string EnglishName, KeyboardLightingSettings Settings)
+{
+    public string DisplayName => Strings.IsEnglish ? EnglishName : Name;
+}
 
 public static class KeyboardPresets
 {
     public static IReadOnlyList<KeyboardPreset> All { get; } =
     [
-        new("Nitro Kırmızı", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#FF1E1E", "#FF1E1E", "#FF1E1E", "#FF1E1E", "#FF1E1E")),
-        new("Siber Mavi", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#00D4FF", "#00D4FF", "#00D4FF", "#00D4FF", "#00D4FF")),
-        new("Zümrüt", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#00E676", "#00E676", "#00E676", "#00E676", "#00E676")),
-        new("Mor Neon", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#A855F7", "#A855F7", "#A855F7", "#A855F7", "#A855F7")),
-        new("Gökkuşağı", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#FF2A2A", "#FFB800", "#00E676", "#00B0FF", "#FF2A2A")),
-        new("Buz Beyazı", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#E2E8F0", "#E2E8F0", "#E2E8F0", "#E2E8F0", "#E2E8F0")),
-        new("Dalga", new KeyboardLightingSettings(KeyboardEffect.Wave, 100, 5, KeyboardDirection.LeftToRight, "#FF1E1E", "#FFB800", "#00E676", "#00B0FF", "#00D4FF")),
-        new("Kapalı", new KeyboardLightingSettings(KeyboardEffect.Static, 0, 0, KeyboardDirection.LeftToRight, "#000000", "#000000", "#000000", "#000000", "#000000")),
+        new("Nitro Kırmızı", "Nitro Red", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#FF1E1E", "#FF1E1E", "#FF1E1E", "#FF1E1E", "#FF1E1E")),
+        new("Siber Mavi", "Cyber Blue", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#00D4FF", "#00D4FF", "#00D4FF", "#00D4FF", "#00D4FF")),
+        new("Zümrüt", "Emerald", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#00E676", "#00E676", "#00E676", "#00E676", "#00E676")),
+        new("Mor Neon", "Purple Neon", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#A855F7", "#A855F7", "#A855F7", "#A855F7", "#A855F7")),
+        new("Gökkuşağı", "Rainbow", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#FF2A2A", "#FFB800", "#00E676", "#00B0FF", "#FF2A2A")),
+        new("Buz Beyazı", "Ice White", new KeyboardLightingSettings(KeyboardEffect.Static, 100, 4, KeyboardDirection.LeftToRight, "#E2E8F0", "#E2E8F0", "#E2E8F0", "#E2E8F0", "#E2E8F0")),
+        new("Dalga", "Wave", new KeyboardLightingSettings(KeyboardEffect.Wave, 100, 5, KeyboardDirection.LeftToRight, "#FF1E1E", "#FFB800", "#00E676", "#00B0FF", "#00D4FF")),
+        new("Kapalı", "Off", new KeyboardLightingSettings(KeyboardEffect.Static, 0, 0, KeyboardDirection.LeftToRight, "#000000", "#000000", "#000000", "#000000", "#000000")),
     ];
 }

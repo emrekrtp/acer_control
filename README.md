@@ -22,7 +22,8 @@ A lightweight, modern dark-themed Windows control center and system tray utility
 - **Battery Charge Limit (80%) & System Tools:**
   - Automatically enforces the 80% battery charge limit every minute, after wake from sleep, and on AC plug/unplug events.
   - Live **Display Brightness** slider, **LCD Overdrive**, **Power-Off USB Charging**, 30-second keyboard backlight timeout, and automatic reapply on wake.
-- **Rich System Tray:**
+- **Rich System Tray & Bilingual UI (EN / TR):**
+  - Instant one-click **TR / EN** language switch right in the sidebar (saved automatically).
   - Left-click to show/hide the control panel (near-zero background resource usage while hidden).
   - Right-click context menu for instant access to battery charge limit, fan modes, performance profiles, and RGB presets.
 

@@ -12,11 +12,13 @@ using AcerKontrol.Tray;
 
 namespace AcerKontrol.UI;
 
-/// <summary>Acer Nitro 5 için modern koyu temalı kontrol paneli. Kapatıldığında tepsiye gizlenir.</summary>
+/// <summary>Acer Nitro 5 için modern koyu temalı, TR/EN destekli kontrol paneli. Kapatıldığında tepsiye gizlenir.</summary>
 public sealed class DashboardForm : Form
 {
+    private readonly List<Action> localizeActions = [];
     private readonly Panel[] pages;
     private readonly ModernNavButton[] navButtons;
+    private readonly ModernButton langTrBtn, langEnBtn;
     private readonly Label feedbackLabel;
     private readonly StatusPill wmiStatusPill;
 
@@ -77,10 +79,10 @@ public sealed class DashboardForm : Form
     public event Action<bool>? UsbChargingToggled;
     public event Action<bool>? ReapplyOnWakeToggled;
     public event Action<int>? DisplayBrightnessChanged;
+    public event Action<string>? LanguageSelected;
 
     public DashboardForm(string settingsPath)
     {
-        Text = $"{Strings.AppName} — {Strings.AppSubtitle}";
         Size = new Size(980, 680);
         MinimumSize = new Size(920, 620);
         StartPosition = FormStartPosition.CenterScreen;
@@ -89,6 +91,7 @@ public sealed class DashboardForm : Form
         Font = DarkTheme.FontBody;
         DoubleBuffered = true;
 
+        Localize(() => Text = $"{Strings.AppName} — {Strings.AppSubtitle}");
         HandleCreated += (_, _) => DarkTheme.EnableDarkTitleBar(Handle);
 
         // Sol kenar çubuğu
@@ -110,37 +113,37 @@ public sealed class DashboardForm : Form
         brandPanel.Size = new Size(196, 54);
         sidebar.Controls.Add(brandPanel);
 
-        (string Title, NavIconKind Icon)[] navItems =
+        (Func<string> Title, NavIconKind Icon)[] navItems =
         [
-            ("Genel Bakış", NavIconKind.Overview),
-            ("Fan ve Performans", NavIconKind.Fan),
-            ("Klavye Işığı", NavIconKind.Keyboard),
-            ("Pil ve Sistem", NavIconKind.System),
+            (() => Strings.NavOverview, NavIconKind.Overview),
+            (() => Strings.NavFan, NavIconKind.Fan),
+            (() => Strings.NavKeyboard, NavIconKind.Keyboard),
+            (() => Strings.NavSystem, NavIconKind.System),
         ];
         navButtons = new ModernNavButton[navItems.Length];
         for (var i = 0; i < navItems.Length; i++)
         {
             var idx = i;
+            var titleFn = navItems[i].Title;
             var btn = new ModernNavButton
             {
-                Text = navItems[i].Title,
                 IconKind = navItems[i].Icon,
                 Location = new Point(14, 92 + i * 48),
                 Size = new Size(196, 42),
             };
+            Localize(() => btn.Text = titleFn());
             btn.Click += (_, _) => SelectPage(idx);
             sidebar.Controls.Add(btn);
             navButtons[i] = btn;
         }
 
-        // Alt durum alanı
+        // Alt durum alanı (WMI + Geri Bildirim + TR/EN Dil Seçici)
         wmiStatusPill = new StatusPill
         {
-            Text = "Acer WMI: Kontrol...",
+            Text = Strings.WmiChecking,
             DotColor = DarkTheme.TextSecondary,
             Dock = DockStyle.Bottom,
             Height = 32,
-            Margin = new Padding(0, 6, 0, 0),
         };
 
         var feedbackCard = new RoundedCard
@@ -149,12 +152,12 @@ public sealed class DashboardForm : Form
             BorderColor = DarkTheme.BorderSubtle,
             CornerRadius = 9,
             Dock = DockStyle.Bottom,
-            Height = 46,
+            Height = 44,
             Padding = new Padding(10, 6, 10, 6),
         };
         feedbackLabel = new Label
         {
-            Text = "Hazır",
+            Text = Strings.Ready,
             Font = DarkTheme.FontSmall,
             ForeColor = DarkTheme.Green,
             BackColor = Color.Transparent,
@@ -164,9 +167,37 @@ public sealed class DashboardForm : Form
         };
         feedbackCard.Controls.Add(feedbackLabel);
 
-        var footerSpacer = new Panel { Dock = DockStyle.Bottom, Height = 8, BackColor = Color.Transparent };
+        var langRow = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 32,
+            ColumnCount = 2,
+            BackColor = Color.Transparent,
+        };
+        langRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        langRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        langTrBtn = DarkTheme.CreatePillButton("TR", !Strings.IsEnglish, DarkTheme.Accent);
+        langTrBtn.Dock = DockStyle.Fill;
+        langTrBtn.Margin = new Padding(0, 0, 3, 0);
+        langTrBtn.Click += (_, _) => { if (Strings.IsEnglish) LanguageSelected?.Invoke("tr"); };
+        langEnBtn = DarkTheme.CreatePillButton("EN", Strings.IsEnglish, DarkTheme.Cyan);
+        langEnBtn.Dock = DockStyle.Fill;
+        langEnBtn.Margin = new Padding(3, 0, 0, 0);
+        langEnBtn.Click += (_, _) => { if (!Strings.IsEnglish) LanguageSelected?.Invoke("en"); };
+        langRow.Controls.Add(langTrBtn, 0, 0);
+        langRow.Controls.Add(langEnBtn, 1, 0);
+        Localize(() =>
+        {
+            langTrBtn.SetActive(!Strings.IsEnglish, DarkTheme.Accent);
+            langEnBtn.SetActive(Strings.IsEnglish, DarkTheme.Cyan);
+        });
+
+        var spacer1 = new Panel { Dock = DockStyle.Bottom, Height = 8, BackColor = Color.Transparent };
+        var spacer2 = new Panel { Dock = DockStyle.Bottom, Height = 8, BackColor = Color.Transparent };
+        sidebar.Controls.Add(langRow);
+        sidebar.Controls.Add(spacer1);
         sidebar.Controls.Add(feedbackCard);
-        sidebar.Controls.Add(footerSpacer);
+        sidebar.Controls.Add(spacer2);
         sidebar.Controls.Add(wmiStatusPill);
 
         // Sağ içerik alanı
@@ -178,16 +209,17 @@ public sealed class DashboardForm : Form
         };
 
         // Sayfa 0: Genel Bakış
-        ovLimitBtn = DarkTheme.CreatePillButton("Pil Sınırı (%80): Açık", true, DarkTheme.Green);
+        ovLimitBtn = DarkTheme.CreatePillButton("", true, DarkTheme.Green);
         ovLimitBtn.LeadingDotColor = DarkTheme.Green;
         ovLimitBtn.Click += (_, _) => LimitToggled?.Invoke();
-        ovKbToggleBtn = DarkTheme.CreatePillButton("Klavye Işığı: Açık", true, DarkTheme.Cyan);
+        ovKbToggleBtn = DarkTheme.CreatePillButton("", true, DarkTheme.Cyan);
         ovKbToggleBtn.LeadingDotColor = DarkTheme.Cyan;
         ovKbToggleBtn.Click += (_, _) => ToggleKeyboardQuick();
         var overviewPage = BuildOverviewPage();
 
         // Sayfa 1: Fan ve Performans
-        coolBoostToggle = StyledToggle("CoolBoost", "Yüksek yük altında daha agresif fan soğutması uygular", DarkTheme.Cyan);
+        coolBoostToggle = StyledToggle("CoolBoost", Strings.CoolBoostSub, DarkTheme.Cyan);
+        Localize(() => { coolBoostToggle.Subtitle = Strings.CoolBoostSub; coolBoostToggle.Invalidate(); });
         coolBoostToggle.CheckedChanged += (_, _) => { if (!suppressEvents) CoolBoostToggled?.Invoke(coolBoostToggle.Checked); };
         fanLivePill = new StatusPill
         {
@@ -198,22 +230,24 @@ public sealed class DashboardForm : Form
         };
         cpuFanSlider = StyledSlider(0, 100, 50, DarkTheme.Accent);
         gpuFanSlider = StyledSlider(0, 100, 50, DarkTheme.Cyan);
-        cpuFanPctLabel = ValueBadge("%50", DarkTheme.Accent);
-        gpuFanPctLabel = ValueBadge("%50", DarkTheme.Cyan);
-        syncFansToggle = StyledToggle("CPU ve GPU fan hızlarını eşitle", null, DarkTheme.Cyan);
+        cpuFanPctLabel = ValueBadge(StatusText.Percent(50), DarkTheme.Accent);
+        gpuFanPctLabel = ValueBadge(StatusText.Percent(50), DarkTheme.Cyan);
+        syncFansToggle = StyledToggle(Strings.SyncFansText, null, DarkTheme.Cyan);
+        Localize(() => syncFansToggle.Text = Strings.SyncFansText);
         syncFansToggle.Checked = true;
-        applyCustomFanBtn = DarkTheme.CreateAccentButton("Özel Fan Hızını Uygula");
+        applyCustomFanBtn = DarkTheme.CreateAccentButton(Strings.ApplyCustomFan);
+        Localize(() => applyCustomFanBtn.Text = Strings.ApplyCustomFan);
         applyCustomFanBtn.Width = 196;
         applyCustomFanBtn.Click += (_, _) => CustomFanSpeedsApplied?.Invoke(cpuFanSlider.Value, gpuFanSlider.Value);
         cpuFanSlider.ValueChanged += (_, _) =>
         {
-            cpuFanPctLabel.Text = $"%{cpuFanSlider.Value}";
+            cpuFanPctLabel.Text = StatusText.Percent(cpuFanSlider.Value);
             if (!suppressEvents && syncFansToggle.Checked && gpuFanSlider.Value != cpuFanSlider.Value)
                 gpuFanSlider.Value = cpuFanSlider.Value;
         };
         gpuFanSlider.ValueChanged += (_, _) =>
         {
-            gpuFanPctLabel.Text = $"%{gpuFanSlider.Value}";
+            gpuFanPctLabel.Text = StatusText.Percent(gpuFanSlider.Value);
             if (!suppressEvents && syncFansToggle.Checked && cpuFanSlider.Value != gpuFanSlider.Value)
                 cpuFanSlider.Value = gpuFanSlider.Value;
         };
@@ -222,17 +256,23 @@ public sealed class DashboardForm : Form
         // Sayfa 2: Klavye Işığı
         kbBrightnessSlider = StyledSlider(0, 100, 100, DarkTheme.Cyan);
         kbSpeedSlider = StyledSlider(1, 9, 4, DarkTheme.Violet);
-        kbBrightnessLabel = ValueBadge("%100", DarkTheme.Cyan);
+        kbBrightnessLabel = ValueBadge(StatusText.Percent(100), DarkTheme.Cyan);
         kbSpeedLabel = ValueBadge("4", DarkTheme.Violet);
         dirRtlBtn = DarkTheme.CreatePillButton(Strings.DirectionRightToLeft);
         dirLtrBtn = DarkTheme.CreatePillButton(Strings.DirectionLeftToRight, true, DarkTheme.Cyan);
+        Localize(() =>
+        {
+            dirRtlBtn.Text = Strings.DirectionRightToLeft;
+            dirLtrBtn.Text = Strings.DirectionLeftToRight;
+        });
         zonePreview = new KeyboardZonePreview { Dock = DockStyle.Top, Height = 78 };
         zonePreview.ZoneClicked += PickZoneColor;
-        applyKeyboardBtn = DarkTheme.CreateAccentButton("Klavyeye Uygula");
+        applyKeyboardBtn = DarkTheme.CreateAccentButton(Strings.ApplyKeyboard);
+        Localize(() => applyKeyboardBtn.Text = Strings.ApplyKeyboard);
         applyKeyboardBtn.Width = 176;
         kbBrightnessSlider.ValueChanged += (_, _) =>
         {
-            kbBrightnessLabel.Text = $"%{kbBrightnessSlider.Value}";
+            kbBrightnessLabel.Text = StatusText.Percent(kbBrightnessSlider.Value);
             if (suppressEvents) return;
             editingKeyboard = editingKeyboard with { Brightness = kbBrightnessSlider.Value };
             if (kbBrightnessSlider.Value > 0) lastNonZeroKbBrightness = kbBrightnessSlider.Value;
@@ -273,22 +313,32 @@ public sealed class DashboardForm : Form
         var keyboardPage = BuildKeyboardPage();
 
         // Sayfa 3: Pil ve Sistem
-        sysLimitToggle = StyledToggle("Pil şarjını %80 ile sınırla", "Pil ömrünü uzatmak için şarjı %80'de durdurur", DarkTheme.Green);
+        sysLimitToggle = StyledToggle(Strings.ToggleLimitTitle, Strings.ToggleLimitSub, DarkTheme.Green);
+        Localize(() => { sysLimitToggle.Text = Strings.ToggleLimitTitle; sysLimitToggle.Subtitle = Strings.ToggleLimitSub; sysLimitToggle.Invalidate(); });
         sysLimitToggle.AutoCheck = false;
         sysLimitToggle.Click += (_, _) => LimitToggled?.Invoke();
-        kbTimeoutToggle = StyledToggle("Klavye ışığı zaman aşımı (30 sn)", "Hareketsizlikte klavye aydınlatmasını otomatik kapatır", DarkTheme.Cyan);
+
+        kbTimeoutToggle = StyledToggle(Strings.ToggleKbTimeoutTitle, Strings.ToggleKbTimeoutSub, DarkTheme.Cyan);
+        Localize(() => { kbTimeoutToggle.Text = Strings.ToggleKbTimeoutTitle; kbTimeoutToggle.Subtitle = Strings.ToggleKbTimeoutSub; kbTimeoutToggle.Invalidate(); });
         kbTimeoutToggle.CheckedChanged += (_, _) => { if (!suppressEvents) KeyboardTimeoutToggled?.Invoke(kbTimeoutToggle.Checked); };
-        lcdOverdriveToggle = StyledToggle("LCD Overdrive", "Daha düşük ekran tepki süresi (panel desteği gerekir)", DarkTheme.Cyan);
+
+        lcdOverdriveToggle = StyledToggle(Strings.ToggleLcdTitle, Strings.ToggleLcdSub, DarkTheme.Cyan);
+        Localize(() => { lcdOverdriveToggle.Text = Strings.ToggleLcdTitle; lcdOverdriveToggle.Invalidate(); });
         lcdOverdriveToggle.CheckedChanged += (_, _) => { if (!suppressEvents) LcdOverdriveToggled?.Invoke(lcdOverdriveToggle.Checked); };
-        usbChargingToggle = StyledToggle("Kapalıyken USB Şarjı", "Bilgisayar kapalıyken Power-Off USB portu üzerinden şarj sağlar", DarkTheme.Cyan);
+
+        usbChargingToggle = StyledToggle(Strings.ToggleUsbTitle, Strings.ToggleUsbSub, DarkTheme.Cyan);
+        Localize(() => { usbChargingToggle.Text = Strings.ToggleUsbTitle; usbChargingToggle.Subtitle = Strings.ToggleUsbSub; usbChargingToggle.Invalidate(); });
         usbChargingToggle.CheckedChanged += (_, _) => { if (!suppressEvents) UsbChargingToggled?.Invoke(usbChargingToggle.Checked); };
-        reapplyWakeToggle = StyledToggle("Uyanışta ayarları yeniden uygula", "Uykudan çıkınca pil sınırı, fan ve klavye profilini geri yükler", DarkTheme.Green);
+
+        reapplyWakeToggle = StyledToggle(Strings.ToggleWakeTitle, Strings.ToggleWakeSub, DarkTheme.Green);
+        Localize(() => { reapplyWakeToggle.Text = Strings.ToggleWakeTitle; reapplyWakeToggle.Subtitle = Strings.ToggleWakeSub; reapplyWakeToggle.Invalidate(); });
         reapplyWakeToggle.CheckedChanged += (_, _) => { if (!suppressEvents) ReapplyOnWakeToggled?.Invoke(reapplyWakeToggle.Checked); };
+
         displayBrightnessSlider = StyledSlider(0, 100, 75, DarkTheme.Amber);
-        displayBrightnessLabel = ValueBadge("%75", DarkTheme.Amber);
+        displayBrightnessLabel = ValueBadge(StatusText.Percent(75), DarkTheme.Amber);
         displayBrightnessSlider.Scroll += (_, _) =>
         {
-            displayBrightnessLabel.Text = $"%{displayBrightnessSlider.Value}";
+            displayBrightnessLabel.Text = StatusText.Percent(displayBrightnessSlider.Value);
             if (!suppressEvents) DisplayBrightnessChanged?.Invoke(displayBrightnessSlider.Value);
         };
         var systemPage = BuildSystemPage(settingsPath);
@@ -304,10 +354,19 @@ public sealed class DashboardForm : Form
         Controls.Add(contentHost);
         Controls.Add(sidebar);
 
+        ApplyLanguage();
         SelectPage(0);
     }
 
-    private static Panel BuildBrandHeader()
+    private void Localize(Action action) => localizeActions.Add(action);
+
+    public void ApplyLanguage()
+    {
+        foreach (var act in localizeActions) act();
+        zonePreview.Invalidate();
+    }
+
+    private Panel BuildBrandHeader()
     {
         var panel = new Panel { BackColor = Color.Transparent };
         panel.Paint += (_, e) =>
@@ -315,17 +374,14 @@ public sealed class DashboardForm : Form
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // Kırmızı Nitro logo rozeti
             var badgeRect = new RectangleF(0, 6, 36, 36);
             using (var badgePath = DarkTheme.CreateRoundedRect(badgeRect, 10))
             using (var grad = new LinearGradientBrush(badgeRect, DarkTheme.AccentHover, DarkTheme.Blend(DarkTheme.Accent, Color.Black, 0.28f), LinearGradientMode.ForwardDiagonal))
                 g.FillPath(grad, badgePath);
 
-            // İçeride keskin 'N' simgesi
             using var pen = new Pen(Color.White, 2.4f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
             g.DrawLines(pen, [new PointF(11, 31), new PointF(11, 17), new PointF(25, 31), new PointF(25, 17)]);
 
-            // Alt ince ayırıcı çizgi
             using var sepBrush = new LinearGradientBrush(
                 new RectangleF(0, 52, panel.Width, 1),
                 DarkTheme.Border,
@@ -336,7 +392,6 @@ public sealed class DashboardForm : Form
 
         var titleLbl = new Label
         {
-            Text = "ACER KONTROL",
             Font = new Font(DarkTheme.FontTitle.FontFamily, 11.5f, FontStyle.Bold),
             ForeColor = DarkTheme.TextPrimary,
             BackColor = Color.Transparent,
@@ -345,19 +400,23 @@ public sealed class DashboardForm : Form
         };
         var subLbl = new Label
         {
-            Text = Strings.AppSubtitle,
             Font = DarkTheme.FontSmall,
             ForeColor = DarkTheme.TextSecondary,
             BackColor = Color.Transparent,
             AutoSize = true,
             Location = new Point(47, 27),
         };
+        Localize(() =>
+        {
+            titleLbl.Text = Strings.AppName.ToUpperInvariant();
+            subLbl.Text = Strings.AppSubtitle;
+        });
         panel.Controls.Add(titleLbl);
         panel.Controls.Add(subLbl);
         return panel;
     }
 
-    private static Panel PageHeader(string title, string subtitle)
+    private Panel PageHeader(Func<string> titleFn, Func<string> subtitleFn)
     {
         var header = new Panel
         {
@@ -368,7 +427,6 @@ public sealed class DashboardForm : Form
         };
         var t = new Label
         {
-            Text = title,
             Font = DarkTheme.FontPageTitle,
             ForeColor = DarkTheme.TextPrimary,
             BackColor = Color.Transparent,
@@ -377,23 +435,36 @@ public sealed class DashboardForm : Form
         };
         var s = new Label
         {
-            Text = subtitle,
             Font = DarkTheme.FontSmall,
             ForeColor = DarkTheme.TextSecondary,
             BackColor = Color.Transparent,
             AutoSize = true,
             Location = new Point(1, 30),
         };
+        Localize(() => { t.Text = titleFn(); s.Text = subtitleFn(); });
         header.Controls.Add(t);
         header.Controls.Add(s);
         return header;
     }
 
+    private RoundedCard LocalizedCard(Func<string> titleFn, Color? accentBar = null)
+    {
+        var card = DarkTheme.CreateCard(titleFn(), accentBar: accentBar);
+        Localize(() => { card.Title = titleFn(); card.Invalidate(); });
+        return card;
+    }
+
+    private Label LocalizedCaption(Func<string> textFn)
+    {
+        var lbl = CaptionLabel(textFn());
+        Localize(() => lbl.Text = textFn());
+        return lbl;
+    }
+
     private Panel BuildOverviewPage()
     {
         var page = new Panel { BackColor = DarkTheme.BgWindow };
-
-        var header = PageHeader("Genel Bakış", "Anlık sistem sıcaklığı, donanım telemetrisi ve hızlı kontroller");
+        var header = PageHeader(() => Strings.NavOverview, () => Strings.OverviewSubtitle);
 
         var grid = new TableLayoutPanel
         {
@@ -408,13 +479,12 @@ public sealed class DashboardForm : Form
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
-        grid.Controls.Add(MetricCard("İŞLEMCİ (CPU)", ovCpuTemp, ovCpuSub, ovCpuBar, DarkTheme.Cyan), 0, 0);
-        grid.Controls.Add(MetricCard("EKRAN KARTI (GPU)", ovGpuTemp, ovGpuSub, ovGpuBar, DarkTheme.Violet), 1, 0);
-        grid.Controls.Add(MetricCard("BELLEK (RAM)", ovRamVal, ovRamSub, ovRamBar, DarkTheme.Amber), 0, 1);
-        grid.Controls.Add(MetricCard("PİL DURUMU", ovBatVal, ovBatSub, ovBatBar, DarkTheme.Green), 1, 1);
+        grid.Controls.Add(MetricCard(() => Strings.MetricCpu, ovCpuTemp, ovCpuSub, ovCpuBar, DarkTheme.Cyan), 0, 0);
+        grid.Controls.Add(MetricCard(() => Strings.MetricGpu, ovGpuTemp, ovGpuSub, ovGpuBar, DarkTheme.Violet), 1, 0);
+        grid.Controls.Add(MetricCard(() => Strings.MetricRam, ovRamVal, ovRamSub, ovRamBar, DarkTheme.Amber), 0, 1);
+        grid.Controls.Add(MetricCard(() => Strings.MetricBattery, ovBatVal, ovBatSub, ovBatBar, DarkTheme.Green), 1, 1);
 
-        // Hızlı Kontroller Kartı
-        var quickCard = DarkTheme.CreateCard("Hızlı Kontroller");
+        var quickCard = LocalizedCard(() => Strings.CardQuickControls);
         quickCard.Dock = DockStyle.Fill;
 
         var quickLayout = new TableLayoutPanel
@@ -432,9 +502,9 @@ public sealed class DashboardForm : Form
         quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14));
         quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
 
-        quickLayout.Controls.Add(CaptionLabel("Performans Profili"), 0, 0);
+        quickLayout.Controls.Add(LocalizedCaption(() => Strings.MenuProfile), 0, 0);
         quickLayout.Controls.Add(BuildProfileRow(ovProfileBtns), 0, 1);
-        quickLayout.Controls.Add(CaptionLabel("Fan Modu"), 0, 2);
+        quickLayout.Controls.Add(LocalizedCaption(() => Strings.MenuFanMode), 0, 2);
         quickLayout.Controls.Add(BuildFanModeRow(ovFanBtns), 0, 3);
 
         var togglesRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, BackColor = Color.Transparent };
@@ -471,7 +541,7 @@ public sealed class DashboardForm : Form
         stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         // 1. Performans Profili
-        var profCard = DarkTheme.CreateCard("Performans Profili", accentBar: DarkTheme.Accent);
+        var profCard = LocalizedCard(() => Strings.MenuProfile, accentBar: DarkTheme.Accent);
         profCard.Dock = DockStyle.Top;
         profCard.Height = 120;
         var profInner = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 26, 0, 0), BackColor = Color.Transparent };
@@ -480,19 +550,19 @@ public sealed class DashboardForm : Form
         profRow.Height = 38;
         var profHint = new Label
         {
-            Text = "Sessiz: düşük fan sesi · Dengeli: günlük kullanım · Performans / Turbo: maksimum güç ve soğutma",
             Font = DarkTheme.FontSmall,
             ForeColor = DarkTheme.TextSecondary,
             BackColor = Color.Transparent,
             Dock = DockStyle.Bottom,
             Height = 20,
         };
+        Localize(() => profHint.Text = Strings.ProfileHint);
         profInner.Controls.Add(profRow);
         profInner.Controls.Add(profHint);
         profCard.Controls.Add(profInner);
 
         // 2. Fan Modu & CoolBoost
-        var fanCard = DarkTheme.CreateCard("Fan Kontrolü", accentBar: DarkTheme.Cyan);
+        var fanCard = LocalizedCard(() => Strings.CardFanControl, accentBar: DarkTheme.Cyan);
         fanCard.Dock = DockStyle.Top;
         fanCard.Height = 178;
         var fanInner = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 26, 0, 0), BackColor = Color.Transparent };
@@ -510,7 +580,7 @@ public sealed class DashboardForm : Form
         fanCard.Controls.Add(fanInner);
 
         // 3. Özel Fan Hızı
-        var customCard = DarkTheme.CreateCard("Özel Fan Hızı (%0 – %100)");
+        var customCard = LocalizedCard(() => Strings.CardCustomFan);
         customCard.Dock = DockStyle.Top;
         customCard.Height = 186;
         var customGrid = new TableLayoutPanel
@@ -528,11 +598,11 @@ public sealed class DashboardForm : Form
         customGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         customGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
 
-        customGrid.Controls.Add(CaptionLabel("CPU Fanı"), 0, 0);
+        customGrid.Controls.Add(LocalizedCaption(() => Strings.LabelCpuFan), 0, 0);
         customGrid.Controls.Add(cpuFanSlider, 1, 0);
         customGrid.Controls.Add(cpuFanPctLabel, 2, 0);
 
-        customGrid.Controls.Add(CaptionLabel("GPU Fanı"), 0, 1);
+        customGrid.Controls.Add(LocalizedCaption(() => Strings.LabelGpuFan), 0, 1);
         customGrid.Controls.Add(gpuFanSlider, 1, 1);
         customGrid.Controls.Add(gpuFanPctLabel, 2, 1);
 
@@ -547,7 +617,7 @@ public sealed class DashboardForm : Form
         customCard.Controls.Add(customGrid);
 
         // 4. Windows Güç Planı
-        var powerCard = DarkTheme.CreateCard("Windows Güç Planı");
+        var powerCard = LocalizedCard(() => Strings.CardPowerPlan);
         powerCard.Dock = DockStyle.Top;
         powerCard.Height = 100;
         var powerRow = new TableLayoutPanel
@@ -561,16 +631,18 @@ public sealed class DashboardForm : Form
         powerRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
         powerRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.4f));
 
-        (WindowsPowerPlan Plan, string Label)[] plans =
+        (WindowsPowerPlan Plan, Func<string> LabelFn)[] plans =
         [
-            (WindowsPowerPlan.PowerSaver, Strings.PowerPlanSaver),
-            (WindowsPowerPlan.Balanced, Strings.PowerPlanBalanced),
-            (WindowsPowerPlan.HighPerformance, Strings.PowerPlanHigh),
+            (WindowsPowerPlan.PowerSaver, () => Strings.PowerPlanSaver),
+            (WindowsPowerPlan.Balanced, () => Strings.PowerPlanBalanced),
+            (WindowsPowerPlan.HighPerformance, () => Strings.PowerPlanHigh),
         ];
         for (var i = 0; i < plans.Length; i++)
         {
             var plan = plans[i].Plan;
-            var btn = DarkTheme.CreatePillButton(plans[i].Label, false, DarkTheme.Cyan);
+            var labelFn = plans[i].LabelFn;
+            var btn = DarkTheme.CreatePillButton(labelFn(), false, DarkTheme.Cyan);
+            Localize(() => btn.Text = labelFn());
             btn.Dock = DockStyle.Fill;
             btn.Margin = new Padding(i == 0 ? 0 : 4, 0, i == plans.Length - 1 ? 0 : 4, 0);
             btn.Click += (_, _) =>
@@ -583,7 +655,7 @@ public sealed class DashboardForm : Form
         }
         powerCard.Controls.Add(powerRow);
 
-        stack.Controls.Add(PageHeader("Fan ve Performans", "Soğutma profili, fan hızları ve Windows güç planı yönetimi"));
+        stack.Controls.Add(PageHeader(() => Strings.NavFan, () => Strings.FanSubtitle));
         stack.Controls.Add(profCard);
         stack.Controls.Add(fanCard);
         stack.Controls.Add(customCard);
@@ -605,14 +677,15 @@ public sealed class DashboardForm : Form
         stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         // 1. 4 Bölgeli Canlı Önizleme
-        var zoneCard = DarkTheme.CreateCard("4 Bölgeli Klavye Önizleme (Renk değiştirmek için bölgeye tıklayın)", accentBar: DarkTheme.Violet);
+        var zoneCard = LocalizedCard(() => Strings.CardZonePreview, accentBar: DarkTheme.Violet);
         zoneCard.Dock = DockStyle.Top;
         zoneCard.Height = 178;
         var zoneWrapper = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 26, 0, 0), BackColor = Color.Transparent };
 
         var zoneActions = new Panel { Dock = DockStyle.Bottom, Height = 38, BackColor = Color.Transparent };
-        var pickAllBtn = DarkTheme.CreatePillButton("Tüm Bölgelere Tek Renk Seç...");
-        pickAllBtn.Width = 230;
+        var pickAllBtn = DarkTheme.CreatePillButton(Strings.PickAllZones);
+        Localize(() => pickAllBtn.Text = Strings.PickAllZones);
+        pickAllBtn.Width = 236;
         pickAllBtn.Dock = DockStyle.Left;
         pickAllBtn.Click += (_, _) => PickAllZonesColor();
         applyKeyboardBtn.Dock = DockStyle.Right;
@@ -624,7 +697,7 @@ public sealed class DashboardForm : Form
         zoneCard.Controls.Add(zoneWrapper);
 
         // 2. Efekt Seçici
-        var effectCard = DarkTheme.CreateCard("Aydınlatma Efekti");
+        var effectCard = LocalizedCard(() => Strings.CardEffects);
         effectCard.Dock = DockStyle.Top;
         effectCard.Height = 104;
         var effRow = new TableLayoutPanel
@@ -640,6 +713,7 @@ public sealed class DashboardForm : Form
             effRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / effects.Length));
             var eff = effects[i];
             var btn = DarkTheme.CreatePillButton(StatusText.EffectName(eff));
+            Localize(() => btn.Text = StatusText.EffectName(eff));
             btn.Dock = DockStyle.Fill;
             btn.Margin = new Padding(i == 0 ? 0 : 3, 0, i == effects.Length - 1 ? 0 : 3, 0);
             btn.Click += (_, _) =>
@@ -654,7 +728,7 @@ public sealed class DashboardForm : Form
         effectCard.Controls.Add(effRow);
 
         // 3. Parlaklık, Hız ve Yön
-        var ctrlCard = DarkTheme.CreateCard("Parlaklık, Hız ve Yön");
+        var ctrlCard = LocalizedCard(() => Strings.CardKbControls);
         ctrlCard.Dock = DockStyle.Top;
         ctrlCard.Height = 176;
         var ctrlGrid = new TableLayoutPanel
@@ -673,7 +747,7 @@ public sealed class DashboardForm : Form
         ctrlGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         ctrlGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
 
-        ctrlGrid.Controls.Add(CaptionLabel("Parlaklık"), 0, 0);
+        ctrlGrid.Controls.Add(LocalizedCaption(() => Strings.LabelBrightness), 0, 0);
         ctrlGrid.Controls.Add(kbBrightnessSlider, 1, 0);
         ctrlGrid.Controls.Add(kbBrightnessLabel, 2, 0);
 
@@ -697,15 +771,16 @@ public sealed class DashboardForm : Form
         }
         ctrlGrid.Controls.Add(quickBright, 3, 0);
 
-        ctrlGrid.Controls.Add(CaptionLabel("Hız"), 0, 1);
+        ctrlGrid.Controls.Add(LocalizedCaption(() => Strings.LabelSpeed), 0, 1);
         ctrlGrid.Controls.Add(kbSpeedSlider, 1, 1);
         ctrlGrid.Controls.Add(kbSpeedLabel, 2, 1);
-        var speedNote = SubLabel("Animasyon efektleri için");
+        var speedNote = SubLabel(Strings.SpeedHint);
+        Localize(() => speedNote.Text = Strings.SpeedHint);
         speedNote.TextAlign = ContentAlignment.MiddleLeft;
         speedNote.Dock = DockStyle.Fill;
         ctrlGrid.Controls.Add(speedNote, 3, 1);
 
-        ctrlGrid.Controls.Add(CaptionLabel("Yön"), 0, 2);
+        ctrlGrid.Controls.Add(LocalizedCaption(() => Strings.LabelDirection), 0, 2);
         var dirRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, BackColor = Color.Transparent };
         dirRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         dirRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -720,7 +795,7 @@ public sealed class DashboardForm : Form
         ctrlCard.Controls.Add(ctrlGrid);
 
         // 4. Hazır Temalar
-        var presetCard = DarkTheme.CreateCard("Hazır Renk Temaları");
+        var presetCard = LocalizedCard(() => Strings.CardPresets);
         presetCard.Dock = DockStyle.Top;
         presetCard.Height = 136;
         var presetGrid = new TableLayoutPanel
@@ -738,7 +813,8 @@ public sealed class DashboardForm : Form
         {
             var preset = KeyboardPresets.All[i];
             var swatch = KeyboardCodec.ParseHexColor(preset.Settings.Zone1Hex, DarkTheme.Accent);
-            var btn = DarkTheme.CreatePillButton(preset.Name);
+            var btn = DarkTheme.CreatePillButton(preset.DisplayName);
+            Localize(() => btn.Text = preset.DisplayName);
             btn.Dock = DockStyle.Fill;
             btn.Margin = new Padding(4);
             btn.LeadingDotColor = preset.Settings.Brightness == 0 ? DarkTheme.TextMuted : swatch;
@@ -753,7 +829,7 @@ public sealed class DashboardForm : Form
         }
         presetCard.Controls.Add(presetGrid);
 
-        stack.Controls.Add(PageHeader("Klavye Işığı", "4 bölgeli RGB renk özelleştirme, efektler ve hazır temalar"));
+        stack.Controls.Add(PageHeader(() => Strings.NavKeyboard, () => Strings.KeyboardSubtitle));
         stack.Controls.Add(zoneCard);
         stack.Controls.Add(effectCard);
         stack.Controls.Add(ctrlCard);
@@ -775,7 +851,7 @@ public sealed class DashboardForm : Form
         stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         // 1. Pil Detayları
-        var batCard = DarkTheme.CreateCard("Pil Sağlığı ve Şarj Sınırı", accentBar: DarkTheme.Green);
+        var batCard = LocalizedCard(() => Strings.CardBatteryDetails, accentBar: DarkTheme.Green);
         batCard.Dock = DockStyle.Top;
         batCard.Height = 232;
         var batGrid = new TableLayoutPanel
@@ -793,18 +869,18 @@ public sealed class DashboardForm : Form
         for (var r = 0; r < 4; r++) batGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
         batGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
 
-        void AddPair(int row, int colPair, string cap, Label val)
+        void AddPair(int row, int colPair, Func<string> capFn, Label val)
         {
-            batGrid.Controls.Add(CaptionLabel(cap), colPair * 2, row);
+            batGrid.Controls.Add(LocalizedCaption(capFn), colPair * 2, row);
             batGrid.Controls.Add(val, colPair * 2 + 1, row);
         }
-        AddPair(0, 0, "Şarj", batPct);
-        AddPair(0, 1, "Durum", batState);
-        AddPair(1, 0, "Sağlık", batHealth);
-        AddPair(1, 1, "Kapasite", batCap);
-        AddPair(2, 0, "Döngü", batCycles);
-        AddPair(2, 1, "Sıcaklık", batTemp);
-        AddPair(3, 0, "Sınır Durumu", batLimit);
+        AddPair(0, 0, () => Strings.CapCharge, batPct);
+        AddPair(0, 1, () => Strings.LabelState, batState);
+        AddPair(1, 0, () => Strings.LabelHealth, batHealth);
+        AddPair(1, 1, () => Strings.CapCapacity, batCap);
+        AddPair(2, 0, () => Strings.CapCycles, batCycles);
+        AddPair(2, 1, () => Strings.LabelTemperature, batTemp);
+        AddPair(3, 0, () => Strings.CapLimitStatus, batLimit);
 
         sysLimitToggle.Dock = DockStyle.Fill;
         sysLimitToggle.Margin = new Padding(0, 6, 0, 0);
@@ -813,7 +889,7 @@ public sealed class DashboardForm : Form
         batCard.Controls.Add(batGrid);
 
         // 2. Ekran Parlaklığı
-        var dispCard = DarkTheme.CreateCard("Ekran Parlaklığı", accentBar: DarkTheme.Amber);
+        var dispCard = LocalizedCard(() => Strings.CardDisplayBrightness, accentBar: DarkTheme.Amber);
         dispCard.Dock = DockStyle.Top;
         dispCard.Height = 100;
         var dispGrid = new TableLayoutPanel
@@ -826,13 +902,13 @@ public sealed class DashboardForm : Form
         dispGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 88));
         dispGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         dispGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 58));
-        dispGrid.Controls.Add(CaptionLabel("Parlaklık"), 0, 0);
+        dispGrid.Controls.Add(LocalizedCaption(() => Strings.LabelBrightness), 0, 0);
         dispGrid.Controls.Add(displayBrightnessSlider, 1, 0);
         dispGrid.Controls.Add(displayBrightnessLabel, 2, 0);
         dispCard.Controls.Add(dispGrid);
 
         // 3. Donanım ve Davranış
-        var hwCard = DarkTheme.CreateCard("Donanım Seçenekleri ve Otomasyon");
+        var hwCard = LocalizedCard(() => Strings.CardHardwareOptions);
         hwCard.Dock = DockStyle.Top;
         hwCard.Height = 236;
         var hwGrid = new TableLayoutPanel
@@ -856,7 +932,7 @@ public sealed class DashboardForm : Form
         hwCard.Controls.Add(hwGrid);
 
         // 4. Tanılama
-        var diagCard = DarkTheme.CreateCard("Sistem ve Tanılama");
+        var diagCard = LocalizedCard(() => Strings.CardDiagnostics);
         diagCard.Dock = DockStyle.Top;
         diagCard.Height = 154;
         var diagGrid = new TableLayoutPanel
@@ -873,13 +949,14 @@ public sealed class DashboardForm : Form
         for (var r = 0; r < 3; r++) diagGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
 
         var isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
-        diagAdminLabel.Text = isAdmin ? "Yönetici (Tam Yetki)" : "Standart Kullanıcı (Kısıtlı)";
+        Localize(() => diagAdminLabel.Text = isAdmin ? Strings.AdminYes : Strings.AdminNo);
         diagAdminLabel.ForeColor = isAdmin ? DarkTheme.Green : DarkTheme.Amber;
-        diagWmiLabel.Text = "Kontrol ediliyor...";
+        diagWmiLabel.Text = Strings.WmiChecking;
         diagPathLabel.Text = settingsPath;
         diagPathLabel.Font = DarkTheme.FontSmall;
 
-        var openFolderBtn = DarkTheme.CreatePillButton("Klasörü Aç");
+        var openFolderBtn = DarkTheme.CreatePillButton(Strings.BtnOpenFolder);
+        Localize(() => openFolderBtn.Text = Strings.BtnOpenFolder);
         openFolderBtn.Dock = DockStyle.Fill;
         openFolderBtn.Margin = new Padding(6, 2, 0, 2);
         openFolderBtn.Click += (_, _) =>
@@ -891,7 +968,8 @@ public sealed class DashboardForm : Form
                 Process.Start(new ProcessStartInfo("explorer.exe", dir) { UseShellExecute = true });
             }
         };
-        var openLogBtn = DarkTheme.CreatePillButton("Logu Aç");
+        var openLogBtn = DarkTheme.CreatePillButton(Strings.BtnOpenLog);
+        Localize(() => openLogBtn.Text = Strings.BtnOpenLog);
         openLogBtn.Dock = DockStyle.Fill;
         openLogBtn.Margin = new Padding(6, 2, 0, 2);
         openLogBtn.Click += (_, _) =>
@@ -899,20 +977,20 @@ public sealed class DashboardForm : Form
             if (File.Exists(DiagLog.LogPath))
                 Process.Start(new ProcessStartInfo(DiagLog.LogPath) { UseShellExecute = true });
             else
-                ShowFeedback("Henüz log dosyası oluşmadı", isError: true);
+                ShowFeedback(Strings.NoLogYet, isError: true);
         };
 
-        diagGrid.Controls.Add(CaptionLabel("Yetki Durumu"), 0, 0);
+        diagGrid.Controls.Add(LocalizedCaption(() => Strings.CapPrivileges), 0, 0);
         diagGrid.Controls.Add(diagAdminLabel, 1, 0);
         diagGrid.Controls.Add(openLogBtn, 2, 0);
         diagGrid.Controls.Add(CaptionLabel("Acer WMI"), 0, 1);
         diagGrid.Controls.Add(diagWmiLabel, 1, 1);
-        diagGrid.Controls.Add(CaptionLabel("Ayar Dosyası"), 0, 2);
+        diagGrid.Controls.Add(LocalizedCaption(() => Strings.CapSettingsFile), 0, 2);
         diagGrid.Controls.Add(diagPathLabel, 1, 2);
         diagGrid.Controls.Add(openFolderBtn, 2, 2);
         diagCard.Controls.Add(diagGrid);
 
-        stack.Controls.Add(PageHeader("Pil ve Sistem", "Pil sağlığı, %80 şarj koruması, ekran ve donanım seçenekleri"));
+        stack.Controls.Add(PageHeader(() => Strings.NavSystem, () => Strings.SystemSubtitle));
         stack.Controls.Add(batCard);
         stack.Controls.Add(dispCard);
         stack.Controls.Add(hwCard);
@@ -936,6 +1014,7 @@ public sealed class DashboardForm : Form
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
             var profile = profiles[i];
             var btn = DarkTheme.CreatePillButton(StatusText.ProfileName(profile));
+            Localize(() => btn.Text = StatusText.ProfileName(profile));
             btn.Dock = DockStyle.Fill;
             btn.Margin = new Padding(i == 0 ? 0 : 4, 0, i == profiles.Length - 1 ? 0 : 4, 0);
             btn.Click += (_, _) => PerformanceProfileSelected?.Invoke(profile);
@@ -954,6 +1033,7 @@ public sealed class DashboardForm : Form
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
             var mode = modes[i];
             var btn = DarkTheme.CreatePillButton(StatusText.FanModeName(mode));
+            Localize(() => btn.Text = StatusText.FanModeName(mode));
             btn.Dock = DockStyle.Fill;
             btn.Margin = new Padding(i == 0 ? 0 : 4, 0, i == modes.Length - 1 ? 0 : 4, 0);
             btn.Click += (_, _) => FanModeSelected?.Invoke(mode);
@@ -963,7 +1043,7 @@ public sealed class DashboardForm : Form
         return row;
     }
 
-    private static RoundedCard MetricCard(string title, Label bigValue, Label subValue, SmoothProgressBar? bar, Color accent)
+    private RoundedCard MetricCard(Func<string> titleFn, Label bigValue, Label subValue, SmoothProgressBar? bar, Color accent)
     {
         var card = DarkTheme.CreateCard(padding: new Padding(16, 13, 16, 14), accentBar: accent);
         card.Dock = DockStyle.Fill;
@@ -971,13 +1051,13 @@ public sealed class DashboardForm : Form
 
         var cap = new Label
         {
-            Text = title,
             Font = DarkTheme.FontSmallBold,
             ForeColor = DarkTheme.TextSecondary,
             BackColor = Color.Transparent,
             Dock = DockStyle.Top,
             Height = 18,
         };
+        Localize(() => cap.Text = titleFn());
         bigValue.Dock = DockStyle.Top;
         bigValue.Height = 40;
         subValue.Dock = DockStyle.Top;
@@ -1060,15 +1140,15 @@ public sealed class DashboardForm : Form
             // Genel Bakış Kartları
             ovCpuTemp.Text = telemetry?.CpuTempC is int ct ? $"{ct} °C" : StatusText.Percent(telemetry?.CpuUsagePercent);
             ovCpuTemp.ForeColor = DarkTheme.ThermalColor(telemetry?.CpuTempC, DarkTheme.TextPrimary);
-            ovCpuSub.Text = $"Kullanım: {StatusText.Percent(telemetry?.CpuUsagePercent)}  ·  Fan: {StatusText.Rpm(telemetry?.CpuFanRpm)}";
+            ovCpuSub.Text = $"{Strings.UsageLabel}: {StatusText.Percent(telemetry?.CpuUsagePercent)}  ·  {Strings.FanLabel}: {StatusText.Rpm(telemetry?.CpuFanRpm)}";
             ovCpuBar.Value = telemetry?.CpuUsagePercent ?? 0;
             ovCpuBar.FillColor = DarkTheme.ThermalColor(telemetry?.CpuTempC, DarkTheme.Cyan);
 
             ovGpuTemp.Text = telemetry?.GpuTempC is int gt
                 ? $"{gt} °C"
-                : (telemetry?.GamingWmiAvailable == true ? "Uyku (dGPU)" : Strings.Unknown);
+                : (telemetry?.GamingWmiAvailable == true ? Strings.GpuSleep : Strings.Unknown);
             ovGpuTemp.ForeColor = telemetry?.GpuTempC is int ? DarkTheme.ThermalColor(telemetry.GpuTempC, DarkTheme.TextPrimary) : DarkTheme.TextSecondary;
-            ovGpuSub.Text = $"Fan: {StatusText.Rpm(telemetry?.GpuFanRpm)}  ·  Mod: {StatusText.FanModeName(settings.FanMode)}";
+            ovGpuSub.Text = $"{Strings.FanLabel}: {StatusText.Rpm(telemetry?.GpuFanRpm)}  ·  {Strings.ModeLabel}: {StatusText.FanModeName(settings.FanMode)}";
             ovGpuBar.Value = telemetry?.GpuTempC is int gTemp ? Math.Clamp(gTemp, 0, 100) : 0;
             ovGpuBar.FillColor = DarkTheme.ThermalColor(telemetry?.GpuTempC, DarkTheme.Violet);
 
@@ -1079,7 +1159,7 @@ public sealed class DashboardForm : Form
             ovBatVal.Text = StatusText.Percent(battery?.ChargePercent);
             ovBatSub.Text = battery is null
                 ? Strings.Unknown
-                : $"{StatusText.Power(battery)}  ·  Sağlık {StatusText.Percent(battery.HealthPercent)}";
+                : $"{StatusText.Power(battery)}  ·  {Strings.LabelHealth} {StatusText.Percent(battery.HealthPercent)}";
             ovBatBar.Value = battery?.ChargePercent ?? 0;
             ovBatBar.FillColor = actualLimit == ChargeLimitState.On ? DarkTheme.Green : DarkTheme.Cyan;
 
@@ -1089,7 +1169,7 @@ public sealed class DashboardForm : Form
             foreach (var kv in ovFanBtns) kv.Value.SetActive(kv.Key == settings.FanMode, DarkTheme.Cyan);
             foreach (var kv in fanModeBtns) kv.Value.SetActive(kv.Key == settings.FanMode, DarkTheme.Cyan);
 
-            ovLimitBtn.Text = $"Pil Sınırı (%80): {(settings.ChargeLimitEnabled ? Strings.LimitOn : Strings.LimitOff)}";
+            ovLimitBtn.Text = $"{Strings.QuickLimitPrefix}: {(settings.ChargeLimitEnabled ? Strings.LimitOn : Strings.LimitOff)}";
             ovLimitBtn.LeadingDotColor = settings.ChargeLimitEnabled ? Color.White : DarkTheme.TextMuted;
             ovLimitBtn.SetActive(settings.ChargeLimitEnabled, DarkTheme.Green);
 
@@ -1100,7 +1180,9 @@ public sealed class DashboardForm : Form
                 editingKeyboard = kb;
                 if (kb.Brightness > 0) lastNonZeroKbBrightness = kb.Brightness;
             }
-            ovKbToggleBtn.Text = kb.Brightness > 0 ? $"Klavye Işığı: %{kb.Brightness}" : "Klavye Işığı: Kapalı";
+            ovKbToggleBtn.Text = kb.Brightness > 0
+                ? $"{Strings.QuickKbPrefix}: {StatusText.Percent(kb.Brightness)}"
+                : $"{Strings.QuickKbPrefix}: {Strings.LimitOff}";
             ovKbToggleBtn.LeadingDotColor = kb.Brightness > 0 ? Color.White : DarkTheme.TextMuted;
             ovKbToggleBtn.SetActive(kb.Brightness > 0, DarkTheme.Cyan);
 
@@ -1110,8 +1192,8 @@ public sealed class DashboardForm : Form
             {
                 cpuFanSlider.Value = Math.Clamp(settings.CpuFanPercent, 0, 100);
                 gpuFanSlider.Value = Math.Clamp(settings.GpuFanPercent, 0, 100);
-                cpuFanPctLabel.Text = $"%{cpuFanSlider.Value}";
-                gpuFanPctLabel.Text = $"%{gpuFanSlider.Value}";
+                cpuFanPctLabel.Text = StatusText.Percent(cpuFanSlider.Value);
+                gpuFanPctLabel.Text = StatusText.Percent(gpuFanSlider.Value);
             }
             fanLivePill.Text =
                 $"CPU: {StatusText.WholeTemperature(telemetry?.CpuTempC)} ({StatusText.Rpm(telemetry?.CpuFanRpm)})   ·   " +
@@ -1136,9 +1218,8 @@ public sealed class DashboardForm : Form
             kbTimeoutToggle.Checked = settings.KeyboardTimeoutEnabled;
             var lcdSupported = telemetry?.LcdOverdriveSupported ?? true;
             lcdOverdriveToggle.Enabled = lcdSupported;
-            lcdOverdriveToggle.Subtitle = lcdSupported
-                ? "Daha düşük ekran tepki süresi (panel desteği gerekir)"
-                : "Bu ekran panelinde desteklenmiyor";
+            lcdOverdriveToggle.Subtitle = lcdSupported ? Strings.ToggleLcdSub : Strings.ToggleLcdUnsupported;
+            lcdOverdriveToggle.Invalidate();
             lcdOverdriveToggle.Checked = lcdSupported && settings.LcdOverdriveEnabled;
             usbChargingToggle.Checked = settings.UsbChargingEnabled;
             reapplyWakeToggle.Checked = settings.ReapplyOnWake;
@@ -1146,13 +1227,13 @@ public sealed class DashboardForm : Form
             if (displayBrightness is int b && !displayBrightnessSlider.IsDragging)
             {
                 displayBrightnessSlider.Value = Math.Clamp(b, 0, 100);
-                displayBrightnessLabel.Text = $"%{displayBrightnessSlider.Value}";
+                displayBrightnessLabel.Text = StatusText.Percent(displayBrightnessSlider.Value);
             }
 
             var wmiOk = telemetry?.GamingWmiAvailable ?? false;
-            wmiStatusPill.Text = wmiOk ? "Acer WMI: Bağlı" : "Acer WMI: Yanıt Yok";
+            wmiStatusPill.Text = wmiOk ? Strings.WmiConnected : Strings.WmiNoResponse;
             wmiStatusPill.DotColor = wmiOk ? DarkTheme.Green : DarkTheme.Amber;
-            diagWmiLabel.Text = wmiOk ? "AcerGamingFunction erişilebilir" : "Erişilemedi (Yönetici yetkisi gerekir)";
+            diagWmiLabel.Text = wmiOk ? Strings.WmiAccessible : Strings.WmiInaccessible;
             diagWmiLabel.ForeColor = wmiOk ? DarkTheme.Green : DarkTheme.Amber;
         }
         finally
@@ -1167,7 +1248,7 @@ public sealed class DashboardForm : Form
             kv.Value.SetActive(kv.Key == editingKeyboard.Effect, DarkTheme.Accent);
 
         kbBrightnessSlider.Value = Math.Clamp(editingKeyboard.Brightness, 0, 100);
-        kbBrightnessLabel.Text = $"%{kbBrightnessSlider.Value}";
+        kbBrightnessLabel.Text = StatusText.Percent(kbBrightnessSlider.Value);
 
         var animated = editingKeyboard.Effect != KeyboardEffect.Static;
         kbSpeedSlider.Enabled = animated;

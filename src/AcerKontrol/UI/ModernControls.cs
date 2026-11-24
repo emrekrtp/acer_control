@@ -61,7 +61,7 @@ public sealed class RoundedCard : Panel
         {
             var titleRect = new Rectangle(Padding.Left, Padding.Top - 1, Width - Padding.Horizontal, 24);
             TextRenderer.DrawText(g, Title, DarkTheme.FontSection, titleRect, DarkTheme.TextPrimary,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         }
 
         using var pen = new Pen(BorderColor, 1f);
@@ -199,12 +199,12 @@ public sealed class ModernButton : Control
             g.FillEllipse(dotBrush, dotX, dotY, dotSize, dotSize);
             textRect = new Rectangle(dotX + dotSize + 7, 0, Width - (dotX + dotSize + 15), Height);
             TextRenderer.DrawText(g, Text, Font, textRect, textCol,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         }
         else
         {
             TextRenderer.DrawText(g, Text, Font, textRect, textCol,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         }
     }
 }
@@ -273,7 +273,7 @@ public sealed class ModernNavButton : Control
         var textColor = isSelected ? DarkTheme.TextPrimary : (isHovered ? DarkTheme.TextPrimary : DarkTheme.TextSecondary);
         var textRect = new Rectangle(42, 0, Width - 50, Height);
         TextRenderer.DrawText(g, Text, Font, textRect, textColor,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
     }
 
     private static void DrawVectorIcon(Graphics g, NavIconKind kind, RectangleF r, Color color)
@@ -672,14 +672,14 @@ public sealed class ModernToggleSwitch : Control
         if (string.IsNullOrEmpty(Subtitle))
         {
             TextRenderer.DrawText(g, Text, Font, new Rectangle(6, 0, textWidth, Height), textColor,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         }
         else
         {
             TextRenderer.DrawText(g, Text, DarkTheme.FontBodyBold, new Rectangle(6, 2, textWidth, 20), textColor,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
             TextRenderer.DrawText(g, Subtitle, DarkTheme.FontSmall, new Rectangle(6, 20, textWidth, 18), DarkTheme.TextSecondary,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         }
     }
 }
@@ -729,7 +729,7 @@ public sealed class StatusPill : Control
             g.FillEllipse(dot, 12, cy - 3, 6, 6);
 
         TextRenderer.DrawText(g, Text, Font, new Rectangle(26, 0, Width - 32, Height), ForeColor,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
     }
 }
 
@@ -842,7 +842,7 @@ public sealed class KeyboardZonePreview : Control
                 g.DrawPath(border, zPath);
 
             var textCol = DarkTheme.ContrastText(lit);
-            TextRenderer.DrawText(g, $"Bölge {i + 1}", DarkTheme.FontBodyBold,
+            TextRenderer.DrawText(g, Strings.ZoneLabel(i + 1), DarkTheme.FontBodyBold,
                 new Rectangle((int)zx, (int)pad + 12, (int)zoneW, 20), textCol,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             TextRenderer.DrawText(g, KeyboardCodec.ToHex(raw), DarkTheme.FontSmall,

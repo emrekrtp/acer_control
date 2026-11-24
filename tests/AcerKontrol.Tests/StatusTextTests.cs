@@ -21,4 +21,21 @@ public class StatusTextTests
     [Fact] public void Temperature_Formats() => Assert.Equal("31,5 °C", StatusText.Temperature(31.5));
     [Fact] public void Temperature_Null_Dash() => Assert.Equal("—", StatusText.Temperature(null));
     [Fact] public void Count_Null_Dash() => Assert.Equal("—", StatusText.Count(null));
+
+    [Fact]
+    public void EnglishMode_FormatsTooltipPercentAndTemperature()
+    {
+        Strings.SetLanguage("en");
+        try
+        {
+            Assert.Equal("76% · Limit: On", StatusText.Tooltip(76, ChargeLimitState.On));
+            Assert.Equal("80%", StatusText.Percent(80));
+            Assert.Equal("31.5 °C", StatusText.Temperature(31.5));
+            Assert.Equal("Charging", StatusText.Power(Snap(charging: true)));
+        }
+        finally
+        {
+            Strings.SetLanguage("tr");
+        }
+    }
 }

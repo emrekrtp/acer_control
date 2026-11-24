@@ -24,9 +24,15 @@ public sealed class TrayAppContext : ApplicationContext
     private readonly SynchronizationContext ui;
 
     private readonly NotifyIcon notifyIcon;
+    private readonly ToolStripMenuItem openItem;
     private readonly ToolStripMenuItem limitItem;
+    private readonly ToolStripMenuItem fanMenu;
+    private readonly ToolStripMenuItem profileMenu;
+    private readonly ToolStripMenuItem kbMenu;
+    private readonly ToolStripMenuItem exitItem;
     private readonly Dictionary<FanMode, ToolStripMenuItem> fanMenuItems = [];
     private readonly Dictionary<PerformanceProfile, ToolStripMenuItem> profileMenuItems = [];
+    private readonly List<(KeyboardPreset Preset, ToolStripMenuItem Item)> kbPresetMenuItems = [];
     private readonly Timer guardTimer = new() { Interval = 60_000 };
     private readonly Timer liveTimer = new() { Interval = 2_000 };
     private readonly DashboardForm dashboard;
@@ -57,6 +63,7 @@ public sealed class TrayAppContext : ApplicationContext
         this.telemetrySource = telemetrySource;
         guard = new ChargeLimitGuard(device, Thread.Sleep);
         settings = store.Load();
+        Strings.SetLanguage(settings.Language);
 
         dashboard = new DashboardForm(SettingsStore.DefaultPath);
         dashboard.VisibleChanged += OnDashboardVisibleChanged;
@@ -72,15 +79,16 @@ public sealed class TrayAppContext : ApplicationContext
         dashboard.UsbChargingToggled += ApplyUsbCharging;
         dashboard.ReapplyOnWakeToggled += ToggleReapplyOnWake;
         dashboard.DisplayBrightnessChanged += ApplyDisplayBrightness;
+        dashboard.LanguageSelected += ApplyLanguage;
 
-        var openItem = new ToolStripMenuItem(Strings.MenuDashboard, null, (_, _) => OpenDashboard())
+        openItem = new ToolStripMenuItem(Strings.MenuDashboard, null, (_, _) => OpenDashboard())
         {
             Font = new Font("Segoe UI", 9f, FontStyle.Bold),
         };
         limitItem = new ToolStripMenuItem(Strings.MenuLimit) { Checked = settings.ChargeLimitEnabled };
         limitItem.Click += (_, _) => ToggleLimit();
 
-        var fanMenu = new ToolStripMenuItem(Strings.MenuFanMode);
+        fanMenu = new ToolStripMenuItem(Strings.MenuFanMode);
         foreach (var mode in Enum.GetValues<FanMode>())
         {
             var m = mode;
@@ -89,7 +97,7 @@ public sealed class TrayAppContext : ApplicationContext
             fanMenu.DropDownItems.Add(item);
         }
 
-        var profileMenu = new ToolStripMenuItem(Strings.MenuProfile);
+        profileMenu = new ToolStripMenuItem(Strings.MenuProfile);
         foreach (var profile in Enum.GetValues<PerformanceProfile>())
         {
             var p = profile;
@@ -98,12 +106,16 @@ public sealed class TrayAppContext : ApplicationContext
             profileMenu.DropDownItems.Add(item);
         }
 
-        var kbMenu = new ToolStripMenuItem(Strings.MenuKeyboard);
+        kbMenu = new ToolStripMenuItem(Strings.MenuKeyboard);
         foreach (var preset in KeyboardPresets.All)
         {
             var p = preset;
-            kbMenu.DropDownItems.Add(new ToolStripMenuItem(p.Name, null, (_, _) => ApplyKeyboard(p.Settings)));
+            var item = new ToolStripMenuItem(p.DisplayName, null, (_, _) => ApplyKeyboard(p.Settings));
+            kbPresetMenuItems.Add((p, item));
+            kbMenu.DropDownItems.Add(item);
         }
+
+        exitItem = new ToolStripMenuItem(Strings.MenuExit, null, (_, _) => Exit());
 
         var menu = new ContextMenuStrip();
         menu.Items.Add(openItem);
@@ -113,7 +125,7 @@ public sealed class TrayAppContext : ApplicationContext
         menu.Items.Add(profileMenu);
         menu.Items.Add(kbMenu);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Strings.MenuExit, null, (_, _) => Exit());
+        menu.Items.Add(exitItem);
 
         // İlk kontrol oluşturulduğunda WinForms senkronizasyon bağlamı kurulmuş olur.
         ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
@@ -138,6 +150,28 @@ public sealed class TrayAppContext : ApplicationContext
 
         if (!startMinimized)
             OpenDashboard();
+    }
+
+    private void ApplyLanguage(string langCode)
+    {
+        Strings.SetLanguage(langCode);
+        settings = settings with { Language = Strings.LanguageCode };
+        store.TrySave(settings);
+
+        openItem.Text = Strings.MenuDashboard;
+        limitItem.Text = Strings.MenuLimit;
+        fanMenu.Text = Strings.MenuFanMode;
+        profileMenu.Text = Strings.MenuProfile;
+        kbMenu.Text = Strings.MenuKeyboard;
+        exitItem.Text = Strings.MenuExit;
+
+        foreach (var kv in fanMenuItems) kv.Value.Text = StatusText.FanModeName(kv.Key);
+        foreach (var kv in profileMenuItems) kv.Value.Text = StatusText.ProfileName(kv.Key);
+        foreach (var (preset, item) in kbPresetMenuItems) item.Text = preset.DisplayName;
+
+        dashboard.ApplyLanguage();
+        Render();
+        dashboard.ShowFeedback(Strings.FbLanguageChanged);
     }
 
     private void OpenDashboard()
@@ -197,7 +231,7 @@ public sealed class TrayAppContext : ApplicationContext
                 else
                     fanController.SetMode(mode);
             },
-            $"Fan modu: {StatusText.FanModeName(mode)}");
+            Strings.FbFanMode(StatusText.FanModeName(mode)));
     }
 
     private void ApplyCustomFanSpeeds(int cpuPercent, int gpuPercent)
@@ -212,7 +246,7 @@ public sealed class TrayAppContext : ApplicationContext
         Render();
         RunHardwareAction(
             () => fanController.SetCustomSpeeds(settings.CpuFanPercent, settings.GpuFanPercent),
-            $"Özel fan hızı: CPU %{settings.CpuFanPercent}, GPU %{settings.GpuFanPercent}");
+            Strings.FbCustomFan(settings.CpuFanPercent, settings.GpuFanPercent));
     }
 
     private void ApplyCoolBoost(bool enabled)
@@ -221,7 +255,7 @@ public sealed class TrayAppContext : ApplicationContext
         store.TrySave(settings);
         RunHardwareAction(
             () => systemController.SetCoolBoost(enabled),
-            $"CoolBoost: {(enabled ? Strings.LimitOn : Strings.LimitOff)}");
+            Strings.FbCoolBoost(enabled));
     }
 
     private void ApplyPerformanceProfile(PerformanceProfile profile)
@@ -231,14 +265,14 @@ public sealed class TrayAppContext : ApplicationContext
         Render();
         RunHardwareAction(
             () => systemController.SetPerformanceProfile(profile),
-            $"Performans profili: {StatusText.ProfileName(profile)}");
+            Strings.FbProfile(StatusText.ProfileName(profile)));
     }
 
     private void ApplyWindowsPowerPlan(WindowsPowerPlan plan)
     {
         RunHardwareAction(
             () => systemController.SetWindowsPowerPlan(plan),
-            "Windows güç planı güncellendi");
+            Strings.FbPowerPlan);
     }
 
     private void ApplyKeyboard(KeyboardLightingSettings kb)
@@ -248,7 +282,7 @@ public sealed class TrayAppContext : ApplicationContext
         Render();
         RunHardwareAction(
             () => keyboardController.Apply(kb),
-            kb.Brightness == 0 ? "Klavye ışığı kapatıldı" : $"Klavye: {StatusText.EffectName(kb.Effect)} (%{kb.Brightness})");
+            kb.Brightness == 0 ? Strings.FbKbOff : Strings.FbKbApplied(StatusText.EffectName(kb.Effect), kb.Brightness));
     }
 
     private void ApplyKeyboardTimeout(bool enabled)
@@ -257,7 +291,7 @@ public sealed class TrayAppContext : ApplicationContext
         store.TrySave(settings);
         RunHardwareAction(
             () => systemController.SetKeyboardTimeout(enabled),
-            $"Klavye 30 sn kapanma: {(enabled ? Strings.LimitOn : Strings.LimitOff)}");
+            Strings.FbKbTimeout(enabled));
     }
 
     private void ApplyLcdOverdrive(bool enabled)
@@ -266,7 +300,7 @@ public sealed class TrayAppContext : ApplicationContext
         store.TrySave(settings);
         RunHardwareAction(
             () => systemController.SetLcdOverdrive(enabled),
-            $"LCD Overdrive: {(enabled ? Strings.LimitOn : Strings.LimitOff)}");
+            Strings.FbLcdOverdrive(enabled));
     }
 
     private void ApplyUsbCharging(bool enabled)
@@ -275,14 +309,14 @@ public sealed class TrayAppContext : ApplicationContext
         store.TrySave(settings);
         RunHardwareAction(
             () => systemController.SetUsbCharging(enabled),
-            $"USB Kapalıyken Şarj: {(enabled ? Strings.LimitOn : Strings.LimitOff)}");
+            Strings.FbUsbCharging(enabled));
     }
 
     private void ToggleReapplyOnWake(bool enabled)
     {
         settings = settings with { ReapplyOnWake = enabled };
         store.TrySave(settings);
-        dashboard.ShowFeedback($"Uyanışta otomatik uygulama: {(enabled ? Strings.LimitOn : Strings.LimitOff)}");
+        dashboard.ShowFeedback(Strings.FbReapplyWake(enabled));
     }
 
     private void ApplyDisplayBrightness(int percent)
@@ -290,7 +324,7 @@ public sealed class TrayAppContext : ApplicationContext
         lastDisplayBrightness = percent;
         RunHardwareAction(
             () => systemController.SetDisplayBrightness(percent),
-            $"Ekran parlaklığı: %{percent}");
+            Strings.FbDisplayBrightness(percent));
     }
 
     private async void RunHardwareAction(Action action, string successMessage)
@@ -305,7 +339,7 @@ public sealed class TrayAppContext : ApplicationContext
         catch (Exception ex)
         {
             DiagLog.Error("ACT ", $"Başarısız: {successMessage}", ex);
-            dashboard.ShowFeedback($"Uygulanamadı: {ex.Message}", isError: true);
+            dashboard.ShowFeedback(Strings.FbFailed(ex.Message), isError: true);
         }
     }
 

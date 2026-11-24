@@ -16,7 +16,8 @@ public sealed record AppSettings(
     bool LcdOverdriveEnabled = false,
     bool UsbChargingEnabled = false,
     bool ReapplyOnWake = true,
-    bool KeyboardTimeoutEnabled = true)
+    bool KeyboardTimeoutEnabled = true,
+    string Language = "tr")
 {
     [JsonIgnore]
     public KeyboardLightingSettings EffectiveKeyboard => Keyboard ?? new KeyboardLightingSettings();

@@ -7,13 +7,17 @@ using AcerKontrol.SystemControl;
 
 namespace AcerKontrol.Tray;
 
-/// <summary>Tepsi ipucu ve durum penceresi için değer biçimlendirme.</summary>
+/// <summary>Tepsi ipucu ve kontrol paneli için yerel dile duyarlı değer biçimlendirme.</summary>
 public static class StatusText
 {
     private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
+    private static readonly CultureInfo En = CultureInfo.InvariantCulture;
 
-    public static string Tooltip(int? percent, ChargeLimitState? limit)
-        => $"%{percent?.ToString() ?? Strings.Unknown} · Sınır: {Limit(limit)}";
+    private static CultureInfo Culture => Strings.IsEnglish ? En : Tr;
+
+    public static string Tooltip(int? percent, ChargeLimitState? limit) => Strings.IsEnglish
+        ? $"{(percent is int p ? $"{p}%" : Strings.Unknown)} · Limit: {Limit(limit)}"
+        : $"%{percent?.ToString() ?? Strings.Unknown} · Sınır: {Limit(limit)}";
 
     public static string Limit(ChargeLimitState? limit) => limit switch
     {
@@ -22,7 +26,9 @@ public static class StatusText
         _ => Strings.LimitUnknown,
     };
 
-    public static string Percent(int? value) => value is int v ? $"%{v}" : Strings.Unknown;
+    public static string Percent(int? value) => value is int v
+        ? (Strings.IsEnglish ? $"{v}%" : $"%{v}")
+        : Strings.Unknown;
 
     public static string Power(BatterySnapshot s) => (s.IsCharging, s.OnAcPower) switch
     {
@@ -34,23 +40,23 @@ public static class StatusText
     };
 
     public static string Temperature(double? celsius)
-        => celsius is double c ? c.ToString("0.0", Tr) + " °C" : Strings.Unknown;
+        => celsius is double c ? c.ToString("0.0", Culture) + " °C" : Strings.Unknown;
 
     public static string WholeTemperature(int? celsius)
         => celsius is int c ? $"{c} °C" : Strings.Unknown;
 
     public static string Rpm(int? rpm)
-        => rpm is int r ? $"{r.ToString("N0", Tr)} RPM" : Strings.Unknown;
+        => rpm is int r ? $"{r.ToString("N0", Culture)} RPM" : Strings.Unknown;
 
     public static string Ram(double? usedGb, double? totalGb, int? percent)
         => usedGb is double u && totalGb is double t
-            ? $"{u.ToString("0.0", Tr)} / {t.ToString("0.0", Tr)} GB ({Percent(percent)})"
+            ? $"{u.ToString("0.0", Culture)} / {t.ToString("0.0", Culture)} GB ({Percent(percent)})"
             : Strings.Unknown;
 
     public static string CapacityMwh(uint? mwh)
-        => mwh is uint v ? $"{v.ToString("N0", Tr)} mWh" : Strings.Unknown;
+        => mwh is uint v ? $"{v.ToString("N0", Culture)} mWh" : Strings.Unknown;
 
-    public static string Count(uint? value) => value?.ToString(Tr) ?? Strings.Unknown;
+    public static string Count(uint? value) => value?.ToString(Culture) ?? Strings.Unknown;
 
     public static string FanModeName(FanMode mode) => mode switch
     {
