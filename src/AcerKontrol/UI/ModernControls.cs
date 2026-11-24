@@ -389,6 +389,10 @@ public sealed class ModernSlider : Control
 
     public event EventHandler? ValueChanged;
     public event EventHandler? Scroll;
+    public event EventHandler? ValueCommitted;
+
+    [Browsable(false)]
+    public bool IsDragging => dragging;
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int Minimum
@@ -463,8 +467,12 @@ public sealed class ModernSlider : Control
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
-        dragging = false;
-        Invalidate();
+        if (dragging)
+        {
+            dragging = false;
+            Invalidate();
+            if (Enabled) ValueCommitted?.Invoke(this, EventArgs.Empty);
+        }
         base.OnMouseUp(e);
     }
 
@@ -473,15 +481,23 @@ public sealed class ModernSlider : Control
         if (!Enabled) return;
         var step = Math.Max(1, (maximum - minimum) / 20);
         var next = value + (e.Delta > 0 ? step : -step);
-        SetFromUser(next);
+        if (SetFromUser(next)) ValueCommitted?.Invoke(this, EventArgs.Empty);
         base.OnMouseWheel(e);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (!Enabled) return;
-        if (e.KeyCode is Keys.Left or Keys.Down) { SetFromUser(value - 1); e.Handled = true; }
-        else if (e.KeyCode is Keys.Right or Keys.Up) { SetFromUser(value + 1); e.Handled = true; }
+        if (e.KeyCode is Keys.Left or Keys.Down)
+        {
+            if (SetFromUser(value - 1)) ValueCommitted?.Invoke(this, EventArgs.Empty);
+            e.Handled = true;
+        }
+        else if (e.KeyCode is Keys.Right or Keys.Up)
+        {
+            if (SetFromUser(value + 1)) ValueCommitted?.Invoke(this, EventArgs.Empty);
+            e.Handled = true;
+        }
         base.OnKeyDown(e);
     }
 
@@ -494,14 +510,15 @@ public sealed class ModernSlider : Control
         SetFromUser(target);
     }
 
-    private void SetFromUser(int target)
+    private bool SetFromUser(int target)
     {
         var clamped = Math.Clamp(target, minimum, maximum);
-        if (clamped == value) return;
+        if (clamped == value) return false;
         value = clamped;
         Invalidate();
         ValueChanged?.Invoke(this, EventArgs.Empty);
         Scroll?.Invoke(this, EventArgs.Empty);
+        return true;
     }
 
     protected override void OnPaint(PaintEventArgs e)

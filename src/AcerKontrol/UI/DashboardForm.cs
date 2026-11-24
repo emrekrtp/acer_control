@@ -238,11 +238,24 @@ public sealed class DashboardForm : Form
             if (kbBrightnessSlider.Value > 0) lastNonZeroKbBrightness = kbBrightnessSlider.Value;
             zonePreview.SetZones(editingKeyboard.ZoneHexes, editingKeyboard.Brightness);
         };
+        kbBrightnessSlider.ValueCommitted += (_, _) =>
+        {
+            if (suppressEvents) return;
+            editingKeyboard = editingKeyboard with { Brightness = kbBrightnessSlider.Value };
+            if (kbBrightnessSlider.Value > 0) lastNonZeroKbBrightness = kbBrightnessSlider.Value;
+            KeyboardApplied?.Invoke(editingKeyboard);
+        };
         kbSpeedSlider.ValueChanged += (_, _) =>
         {
             kbSpeedLabel.Text = kbSpeedSlider.Value.ToString();
             if (suppressEvents) return;
             editingKeyboard = editingKeyboard with { Speed = kbSpeedSlider.Value };
+        };
+        kbSpeedSlider.ValueCommitted += (_, _) =>
+        {
+            if (suppressEvents) return;
+            editingKeyboard = editingKeyboard with { Speed = kbSpeedSlider.Value };
+            KeyboardApplied?.Invoke(editingKeyboard);
         };
         dirRtlBtn.Click += (_, _) =>
         {
@@ -1081,25 +1094,32 @@ public sealed class DashboardForm : Form
             ovLimitBtn.SetActive(settings.ChargeLimitEnabled, DarkTheme.Green);
 
             var kb = settings.EffectiveKeyboard;
-            editingKeyboard = kb;
-            if (kb.Brightness > 0) lastNonZeroKbBrightness = kb.Brightness;
+            var kbDragging = kbBrightnessSlider.IsDragging || kbSpeedSlider.IsDragging;
+            if (!kbDragging)
+            {
+                editingKeyboard = kb;
+                if (kb.Brightness > 0) lastNonZeroKbBrightness = kb.Brightness;
+            }
             ovKbToggleBtn.Text = kb.Brightness > 0 ? $"Klavye Işığı: %{kb.Brightness}" : "Klavye Işığı: Kapalı";
             ovKbToggleBtn.LeadingDotColor = kb.Brightness > 0 ? Color.White : DarkTheme.TextMuted;
             ovKbToggleBtn.SetActive(kb.Brightness > 0, DarkTheme.Cyan);
 
             // Fan detayları
             coolBoostToggle.Checked = settings.CoolBoostEnabled;
-            cpuFanSlider.Value = Math.Clamp(settings.CpuFanPercent, 0, 100);
-            gpuFanSlider.Value = Math.Clamp(settings.GpuFanPercent, 0, 100);
-            cpuFanPctLabel.Text = $"%{cpuFanSlider.Value}";
-            gpuFanPctLabel.Text = $"%{gpuFanSlider.Value}";
+            if (!cpuFanSlider.IsDragging && !gpuFanSlider.IsDragging)
+            {
+                cpuFanSlider.Value = Math.Clamp(settings.CpuFanPercent, 0, 100);
+                gpuFanSlider.Value = Math.Clamp(settings.GpuFanPercent, 0, 100);
+                cpuFanPctLabel.Text = $"%{cpuFanSlider.Value}";
+                gpuFanPctLabel.Text = $"%{gpuFanSlider.Value}";
+            }
             fanLivePill.Text =
                 $"CPU: {StatusText.WholeTemperature(telemetry?.CpuTempC)} ({StatusText.Rpm(telemetry?.CpuFanRpm)})   ·   " +
                 $"GPU: {StatusText.WholeTemperature(telemetry?.GpuTempC)} ({StatusText.Rpm(telemetry?.GpuFanRpm)})";
             fanLivePill.DotColor = DarkTheme.ThermalColor(telemetry?.CpuTempC, DarkTheme.Cyan);
 
             // Klavye editörü
-            RefreshKeyboardEditorUi();
+            if (!kbDragging) RefreshKeyboardEditorUi();
 
             // Pil & Sistem
             batPct.Text = StatusText.Percent(battery?.ChargePercent);
@@ -1123,7 +1143,7 @@ public sealed class DashboardForm : Form
             usbChargingToggle.Checked = settings.UsbChargingEnabled;
             reapplyWakeToggle.Checked = settings.ReapplyOnWake;
 
-            if (displayBrightness is int b)
+            if (displayBrightness is int b && !displayBrightnessSlider.IsDragging)
             {
                 displayBrightnessSlider.Value = Math.Clamp(b, 0, 100);
                 displayBrightnessLabel.Text = $"%{displayBrightnessSlider.Value}";
