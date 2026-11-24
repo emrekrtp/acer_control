@@ -1,4 +1,4 @@
-# AcerKontrol'ü derler, %ProgramFiles%\AcerKontrol altına kurar ve
+﻿# AcerKontrol'ü derler, %ProgramFiles%\AcerKontrol altına kurar ve
 # oturum açılışında yönetici yetkisiyle (UAC sormadan) başlatan zamanlanmış görevi kaydeder.
 $ErrorActionPreference = 'Stop'
 
@@ -27,7 +27,7 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish başarısız (kod $LASTEXITCODE
 
 Write-Host "Zamanlanmış görev '$TaskName' kaydediliyor..."
 $user = "$env:USERDOMAIN\$env:USERNAME"
-$action = New-ScheduledTaskAction -Execute $Exe -WorkingDirectory $InstallDir
+$action = New-ScheduledTaskAction -Execute $Exe -Argument '--minimized' -WorkingDirectory $InstallDir
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
