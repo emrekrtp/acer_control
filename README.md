@@ -31,7 +31,14 @@ Acer Nitro 5 (AN515-58) için **NitroSense** ve **Acer Care Center**'ın temel �
 - **Yetki:** Acer WMI donanım arayüzüne erişim için **Yönetici (Administrator)** yetkisi
 - **Donanım:** Acer Nitro 5 (AN515-58) üzerinde geliştirilmiş ve test edilmiştir. Aynı Acer WMI arayüzünü kullanan diğer Nitro / Predator modellerinde de kısmen veya tamamen çalışabilir.
 
-## Kurulum / Kaldırma
+## İndirme (Hazır EXE)
+
+Derleme ile uğraşmadan doğrudan kullanmak için **Releases** sayfasından en son sürümü indirebilirsiniz:
+
+- **`AcerKontrol-vX.Y.Z-win-x64.exe`** (veya `...-standalone.zip`): Tek dosya halinde çalışır, sistemde .NET kurulu olmasını gerektirmez.
+- **`AcerKontrol-vX.Y.Z-win-x64-portable.zip`**: Bilgisayarında .NET 9 Desktop Runtime zaten kurulu olanlar için çok daha küçük boyutlu paket.
+
+## Kaynaktan Kurulum / Kaldırma
 
 PowerShell üzerinden kurulum script'ini çalıştırabilirsiniz (gerekirse otomatik olarak yönetici yetkisi ister):
 
